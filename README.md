@@ -1,0 +1,1 @@
+shrdlite project for AI course at Chalmers University and University of Gothenburg

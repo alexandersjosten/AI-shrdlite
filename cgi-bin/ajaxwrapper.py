@@ -22,7 +22,7 @@ from subprocess import Popen, PIPE, STDOUT
 # SCRIPT = ['/usr/local/bin/swipl', '-q', '-g', 'main,halt', '-t', 'halt(1)', '-s', 'shrdlite.pl']
 
 # # Haskell
-# SCRIPTDIR = 'haskell'
+SCRIPTDIR = 'haskell'
 SCRIPT = ['/usr/bin/runhaskell', 'Shrdlite.hs']
 
 # # Python

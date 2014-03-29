@@ -46,6 +46,6 @@ jsonMain jsinput = makeObj result
                    ("goals",     if length trees >= 1 then showJSON goals else JSNull),
                    ("plan",      if length goals == 1 then showJSON plan  else JSNull),
                    ("output",    showJSON output),
-                   ("Test",		 showJSON (show (convertWorld world)))
+                   ("Test",		 showJSON (show (convertWorld 0 world)))
                   ]
 

@@ -18,13 +18,17 @@ type Plan = [String]
 data PDDL = Primative Id Id
 --(ontop a b), (ontop b floor-n)
 
+instance Show PDDL where
+	show (Primative i1 i2) = "ontop " ++ i1 ++ " "  ++ i2
+
 
 
 -- An idea to set up the world in PDDL form
 convertWorld :: World -> PDDLWorld
 convertWorld []     = []
-convertWorld (c:cs) = createPDDL c:convertWorld cs
+convertWorld (c:cs) = (reverse (createPDDL c)):convertWorld cs
 			where
+				createPDDL [] = []
 				createPDDL  (x:xs) = 
 				 Primative x "floor":[Primative (c !! (i+1)) (c !! i)
 				  | i <-[0..length xs -2]]

@@ -12,12 +12,9 @@ import CombinatorParser
 import Text.JSON
 import Data.List (findIndex)
 
-type Utterance = [String]
-type Id = String
-type World = [[Id]]
-type Objects = JSObject JSValue
-type Goal = Bool
-type Plan = [String]
+import HelpFunctions -- and types
+import Interpreter
+import Planner
 
 
 main :: IO ()
@@ -50,19 +47,4 @@ jsonMain jsinput = makeObj result
                    ("plan",      if length goals == 1 then showJSON plan  else JSNull),
                    ("output",    showJSON output)
                   ]
-
-
-interpret :: World -> Id -> Objects -> Command -> [Goal]
-interpret world holding objects tree = [True]
-
-
-solve :: World -> Id -> Objects -> Goal -> Plan
-solve world holding objects goal = ["I picked it up . . .", "pick " ++ show col, ". . . and I dropped it down", "drop " ++ show col]
-    where
-      Just col = findIndex (not . null) world
-
-
-ok :: Result a -> a
-ok (Ok res) = res
-ok (Error err) = error err
 

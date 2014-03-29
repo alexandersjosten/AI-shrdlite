@@ -31,7 +31,7 @@ convertWorld (c:cs) = (reverse (createPDDL c)):convertWorld cs
 				createPDDL [] = []
 				createPDDL  (x:xs) = 
 				 Primative x "floor":[Primative (c !! (i+1)) (c !! i)
-				  | i <-[0..length xs -2]]
+				  | i <-[0..length xs -1]]
 
 
 ok :: Result a -> a

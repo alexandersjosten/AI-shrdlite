@@ -16,6 +16,8 @@ type Plan = [String]
 -- First, divide the features that describe the world into primitive 
 -- and derived features. Definite clauses are 
 data PDDL = Primative Id Id
+instance Eq PDDL where
+    (Primative n11 n12) == (Primative n21 n22) = n11 == n21 && n12 == n22
 --(ontop a b), (ontop b floor-n)
 
 data Form = Brick | Plank | Table | Box | Pyramid | Ball | Floor
@@ -50,23 +52,7 @@ listOfObjects = [Obj "a" Brick   Large "green"
 instance Show PDDL where
 	show (Primative i1 i2) = "ontop " ++ i1 ++ " "  ++ i2
 
--- Remove top object from stack i and return the object and new world
--- Stack count starts at 0
-take' :: Int -> PDDLWorld -> (Id,PDDLWorld)
-take' i w = (getId fstItem ,newWorld)
-        where
-          stack = (w !! i)
-          fstItem = case stack of
-                        [] -> Primative "ERROR" "ERROR"
-                        b  -> head stack
-          newStack = case stack of
-                        [] -> []
-                        b  -> tail stack
-          (l,r) = splitAt i w
-          newWorld = l ++ [newStack] ++ (tail r)
-          
-          
-
+-- main = print $ checkGoal (Primative "l" "g") (convertWorld 0 [["e"],["g","l"],[],["k","m","f"],[]]) 
 -- Returns the first id of a PDDL          
 getId :: PDDL -> Id
 getId (Primative a _) = a           
@@ -91,14 +77,13 @@ okMove (Obj _ _ s1 _)           (Obj _ _ s2 _)           = s1 < s2  -- Small obj
 okMove _                        _                        = False    -- other
 
 
-
 {-
 
-    The floor can support any number of objects.
-    All objects must be supported by something.
+    -The floor can support any number of objects.
+    -All objects must be supported by something.
     The arm can only hold one object at the time.
-    The arm can only pick up free objects.
-    Objects are “in” boxes, but “on” other objects.
+    -The arm can only pick up free objects.
+    -Objects are “in” boxes, but “on” other objects.
     -Balls must be in boxes or on the floor, otherwise they roll away.
     -Balls cannot support anything.
     -Small objects cannot support large objects.
@@ -107,8 +92,11 @@ okMove _                        _                        = False    -- other
 
 -}
 
+checkGoal :: PDDL -> PDDLWorld-> Bool
+checkGoal g w = or $ map (elem g) w 
 
---2 Add object to the top of stack i and return the new world
+
+--Add object to the top of stack i and return the new world
 drop' :: Int -> PDDLWorld -> Id -> PDDLWorld
 drop' i  w  id = newWorld
         where
@@ -118,11 +106,25 @@ drop' i  w  id = newWorld
                       b  -> do
                             let obj1 = getObjId id
                             let obj2 = getObjId oldId
-                            if (okMove obj1  obj2) then Primative "ERROR" "ERROR" else (Primative id oldId) --Check if illegal move is about to be made
+                            if (okMove obj1  obj2) then (Primative id oldId)  else Primative "ERROR" "ERROR" --Check if illegal move is about to be made
           oldId = getId (head stack)
           (l,r) = splitAt i w
           newWorld = l ++[(fstItemid : stack)] ++ tail r
 
+-- Remove top object from stack i and return the object and new world
+-- Stack count starts at 0
+take' :: Int -> PDDLWorld -> (Id,PDDLWorld)
+take' i w = (getId fstItem ,newWorld)
+        where
+          stack = (w !! i)
+          fstItem = case stack of
+                        [] -> Primative "ERROR" "ERROR"
+                        b  -> head stack
+          newStack = case stack of
+                        [] -> []
+                        b  -> tail stack
+          (l,r) = splitAt i w
+          newWorld = l ++ [newStack] ++ (tail r)
 
 -- An idea to set up the world in PDDL form
 convertWorld :: Int -> World -> PDDLWorld

@@ -69,12 +69,12 @@ okMove _                        (Obj _ Ball _ _ )        = False    -- Balls can
 okMove (Obj i1 Plank s1 c1)     (Obj i2 Box s2 c2)       = s1 < s2 -- Boxes cannot contain  planks  of the same size.
 okMove (Obj i1 Pyramid s1 c1)   (Obj i2 Box s2 c2)       = s1 < s2 -- Boxes cannot contain pyramids of the same size.
 okMove (Obj i1 Box Large c1)    (Obj i2 Brick Large c2)  = True     -- but large boxes can also be supported by large bricks.
+okMove (Obj i1 Box _ c1)    	(Obj i2 Brick _ c2)  	 = False 	-- Boxes cannot be supported by bricks if both not large
 okMove (Obj i1 Box s1 c1)       (Obj i2 Table s2 c2)     = s1 == s2 -- Boxes can only be supported by tables of the same size.
 okMove (Obj i1 Box s1 c1)       (Obj i2 Plank s2 c2)     = s1 == s2 -- Boxes can only be supported by planks of the same size.
 okMove (Obj i1 Ball s1 c1)      (Obj i2 Floor s2 c2)     = True     -- Balls must be on the floor, otherwise they roll away. 
 okMove (Obj i1 Ball s1 c1)      (Obj i2 Box s2 c2)       = s1 <= s2 -- Balls must be in a box,     otherwise they roll away. 
 okMove (Obj _ _ s1 _)           (Obj _ _ s2 _)           = s1 < s2  -- Small objects cannot support large objects.
-okMove _                        _                        = False    -- other
 
 
 {-

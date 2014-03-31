@@ -3,6 +3,7 @@ module HelpFunctions where
 
 import Text.JSON
 import Data.List (findIndex)
+import ShrdliteGrammar
 
 type Objects = JSObject JSValue
 type Utterance = [String]
@@ -12,6 +13,7 @@ type World = [[Id]]
 type PDDLWorld = [[PDDL]]
 type Goal = Bool
 type Plan = [String]
+type Move = (Int,Int) -- (Pick int, Drop int)
 
 -- First, divide the features that describe the world into primitive 
 -- and derived features. Definite clauses are 
@@ -20,62 +22,65 @@ instance Eq PDDL where
     (Primative n11 n12) == (Primative n21 n22) = n11 == n21 && n12 == n22
 --(ontop a b), (ontop b floor-n)
 
-data Form = Brick | Plank | Table | Box | Pyramid | Ball | Floor
-			deriving (Show)
--- Maybe use Eq to add constraints ? for example, Brick > Ball = True
--- So Brick can suport Ball
-data Size = Large | Small
-			deriving (Eq,Ord, Show)
-type Color = String
-
-data Object = Obj Id Form Size Color
-
-instance Show Object where
-	show (Obj i f s c) =  "[Obj " ++ i ++ " " ++ show f  ++ " " ++ show s ++ " " ++ c ++ "]"
-
-listOfObjects :: [Object]
-listOfObjects = [Obj "a" Brick   Large "green"
-				,Obj "b" Brick   Small "white"
-				,Obj "c" Plank   Large "red"
-				,Obj "d" Plank   Small "green"
-				,Obj "e" Ball    Large "white"
-				,Obj "f" Ball    Small "black"
-				,Obj "g" Table   Large "blue"
-				,Obj "h" Table   Small "red"
-				,Obj "i" Pyramid Large "yellow"
-				,Obj "j" Pyramid Small "red"
-				,Obj "k" Box     Large "yellow"
-				,Obj "l" Box     Small "red"
-				,Obj "m" Box     Large "blue"
+listOfObjects :: [(Id,Object)]
+listOfObjects = [("a", Object Large Green Brick)
+				,("b", Object Small White Brick) 
+				,("c", Object Large Red Plank)  
+				,("d", Object Small Green Plank) 
+				,("e", Object Large White Ball) 
+				,("f", Object Small Black Ball)   
+				,("g", Object Large Blue Table)  
+				,("h", Object Small Red Table)
+				,("i", Object Large Yellow Pyramid)
+				,("j", Object Small Red Pyramid)
+				,("k", Object Large Yellow Box)
+				,("l", Object Large Red Box)
+				,("m", Object Small Blue Box) 
 				]
+
+
 
 instance Show PDDL where
 	show (Primative i1 i2) = "ontop " ++ i1 ++ " "  ++ i2
 
--- main = print $ checkGoal (Primative "l" "g") (convertWorld 0 [["e"],["g","l"],[],["k","m","f"],[]]) 
+-- main = print $ (convertWorld 0 [["e"],["g","l"],[],["k","m","f"],[]]) 
 -- Returns the first id of a PDDL          
 getId :: PDDL -> Id
 getId (Primative a _) = a           
 
 -- Returns object from id
 getObjId :: Id -> Object
-getObjId id = getO id listOfObjects
-        where 
-            getO id ((Obj i f s c):objs) | id == i = Obj i f s c
-                                         | otherwise = getO id objs 
+getObjId id = case lookup id listOfObjects of
+                    Nothing -> error("Error in getObjId ")
+                    Just a  -> a
+                    
+getIdPrim :: PDDL -> Object
+getIdPrim pd = getObjId $ getId pd
  
 okMove :: Object -> Object -> Bool
-okMove _                        (Obj _ Ball _ _ )        = False    -- Balls can't support anything.
-okMove (Obj i1 Plank s1 c1)     (Obj i2 Box s2 c2)       = s1 < s2 -- Boxes cannot contain  planks  of the same size.
-okMove (Obj i1 Pyramid s1 c1)   (Obj i2 Box s2 c2)       = s1 < s2 -- Boxes cannot contain pyramids of the same size.
-okMove (Obj i1 Box Large c1)    (Obj i2 Brick Large c2)  = True     -- but large boxes can also be supported by large bricks.
-okMove (Obj i1 Box _ c1)    	(Obj i2 Brick _ c2)  	 = False 	-- Boxes cannot be supported by bricks if both not large
-okMove (Obj i1 Box s1 c1)       (Obj i2 Table s2 c2)     = s1 == s2 -- Boxes can only be supported by tables of the same size.
-okMove (Obj i1 Box s1 c1)       (Obj i2 Plank s2 c2)     = s1 == s2 -- Boxes can only be supported by planks of the same size.
-okMove (Obj i1 Ball s1 c1)      (Obj i2 Floor s2 c2)     = True     -- Balls must be on the floor, otherwise they roll away. 
-okMove (Obj i1 Ball s1 c1)      (Obj i2 Box s2 c2)       = s1 <= s2 -- Balls must be in a box,     otherwise they roll away. 
-okMove (Obj _ _ s1 _)           (Obj _ _ s2 _)           = s1 < s2  -- Small objects cannot support large objects.
+okMove _                       (Object _ _ Ball)        = False    -- Balls can't support anything.
+okMove (Object s1 _ Plank)     (Object s2 _  Box)       = s1 < s2  -- Boxes cannot contain  planks  of the same size.
+okMove (Object s1 _ Pyramid)   (Object s2 _ Box)        = s1 < s2  -- Boxes cannot contain pyramids of the same size.
+okMove (Object Large _ Box)    (Object Large _  Brick)  = True     -- but large boxes can also be supported by large bricks.
+okMove (Object s1 _ Box)       (Object s2 _ Brick)  	= False    -- Boxes cannot be supported by bricks if both not large
+okMove (Object s1 _ Box)       (Object s2 _ Table)      = s1 == s2 -- Boxes can only be supported by tables of the same size.
+okMove (Object s1 _ Box)       (Object s2 _ Plank)      = s1 == s2 -- Boxes can only be supported by planks of the same size.
+okMove (Object s1 _ Ball)      (Object s2 _ AnyForm)    = True     -- Balls must be on the floor, otherwise they roll away. 
+okMove (Object s1 _ Ball)      (Object s2 _ Box)        = s1 <= s2 -- Balls must be in a box,     otherwise they roll away. 
+okMove (Object s1 _ Ball)      (Object s2 _ Table)      = False    -- Balls must be in a box,     otherwise they roll away.
+okMove (Object s1 _ _)         (Object s2 _  _)         = s1 < s2  -- Small objects cannot support large objects.
 
+
+
+getAllMoveAll :: PDDLWorld -> [(Int,Int)]
+getAllMoveAll ws = concat [ zip (repeat i) (getAllMove (getIdPrim (head (ws !! i))) ws) |  i<-[0..length ws -1] , (ws !! i) /= []]
+
+getAllMove :: Object -> PDDLWorld -> [Int]
+getAllMove o ws  = [ i | i<-[0..length ws -1] , (ws !! i)  == []  || o `okMove` getIdPrim (head (ws !! i)) ]
+
+
+
+-- main = print $ getAllMove (getObjId "k") (convertWorld 0 [["e"],["g","l"],[],["k","m","f"],[]]) 
 
 {-
 

@@ -11,10 +11,10 @@ import HelpFunctions
 
 
 
-solve :: World -> Id -> Objects -> PDDL -> Plan
+solve :: World -> Id -> Objects -> Goal -> Plan
 solve world holding objects goal = concat [[" pick " ++ show x, "drop " ++ show y] | (x,y)<-allMoves]
     where
-        allMoves = fst $ runDfs goal (convertWorld 0 world)
+        allMoves = fst $ runDfs (Primative "e" "k") (convertWorld 0 world)
 
 -- Breth first search, bad version
 runDfs :: PDDL -> PDDLWorld -> ([Move],PDDLWorld)

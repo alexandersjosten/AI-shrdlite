@@ -1,5 +1,5 @@
 { 
-    "world": [["e"],["g"],[],["k","m","f"],[]],
+    "world": [["e"],["m"],["f"],["g","k"],["l"]],
     "holding": null,
     "objects": {
         "a": { "form":"brick",   "size":"large",  "color":"green" },
@@ -17,7 +17,7 @@
         "m": { "form":"box",     "size":"small",  "color":"blue"  }
     },
     "utterance": 
-        ["put","the","white","ball","in","a","box","on","the","floor"],
+        ["put","the","large","white","ball","on","a", "large", "yellow" , "box"],
     "examples": [
         ["put","the","white","ball","in","a","box","on","the","floor"],
         ["put","the","black","ball","in","a","box","on","the","floor"],

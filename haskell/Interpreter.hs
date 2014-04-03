@@ -5,7 +5,7 @@ import CombinatorParser
 import Text.JSON
 import Text.JSON.Types
 import Data.List (findIndex)
-import Text.Groom
+--import Text.Groom
 import Data.Maybe
 
 import HelpFunctions hiding (Floor, Box, Ball)

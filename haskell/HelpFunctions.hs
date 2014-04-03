@@ -115,13 +115,7 @@ drop' i  w  id = newWorld
           stack = (w !! i)
           fstItemid = case stack of 
                       [] -> Primative id ("floor-" ++ (show i))
-                      b  -> do
-                            let obj1 = getObjId id
-                            let obj2 = getObjId oldId
-                            if (okMove obj1  obj2) 
-                            then (Primative id oldId)  
-                            else error ("dropERROR i:" ++ show i ++ " w:" ++ show w ++ " id: " ++ show id)
-          oldId = getId (head stack)
+                      b  -> Primative id (getId (head stack))
           (l,r) = splitAt i w
           newWorld = l ++[(fstItemid : stack)] ++ tail r
 
@@ -162,6 +156,8 @@ convertMoveToWorld ((x,y):m) w  = do
                      convertMoveToWorld m nw'
 
 
+medWorld :: PDDLWorld
+medWorld = convertWorld 0 [["e"],["a","l"],[],[],["i","h","j"],[],[],["k","g","c","b"],[],["d","m","f"]]
 
 testWorld :: PDDLWorld
 testWorld = convertWorld 0 [["e"],["g","l"],[],["k","m","f"],[]]

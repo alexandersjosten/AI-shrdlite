@@ -33,19 +33,28 @@ interpret' tree =
     (Just o, Nothing)  -> undefined
     (_, _)             -> error "Don't know what to do, can't move nothing!"
 
--- Translates the command and returns JSON-strings
+-- TODO: Quantifiers
 translateCommand :: Command -> (Maybe Object, Maybe Object)
 translateCommand (Move e l) = (translateEntity e, translateLocation l)
 translateCommand (Take e)   = (translateEntity e, Nothing)
 translateCommand (Put l)    = (Nothing, translateLocation l)
 
--- TODO: RelativeEntity location, check where in world object is located
 translateEntity :: Entity -> Maybe Object
 translateEntity Floor                  = Nothing
 translateEntity (BasicEntity _ o)      = Just o
 translateEntity (RelativeEntity _ o _) = Just o
 
--- TODO: Relation of the location
+translateEntity' :: Entity -> [Maybe Object]
+translateEntity' Floor                                 = [Nothing]
+translateEntity' (BasicEntity _ o@(Object s c f))      =
+  case s of
+    AnySize -> [Just (Object Small c f), Just (Object Large c f)]
+    _       -> [Just o]
+translateEntity' (RelativeEntity _ o@(Object s c f) _) =
+  case s of
+    AnySize -> [Just (Object Small c f), Just (Object Large c f)]
+    _       -> [Just o]
+
 translateLocation :: Location -> Maybe Object
 translateLocation (Relative _ e) = translateEntity e
 

@@ -125,14 +125,10 @@ drop' i  w  id = newWorld
 take' :: Int -> PDDLWorld -> (Id,PDDLWorld)
 take' i w = (getId fstItem ,newWorld)
         where
-          stack = (w !! i)
-          fstItem = case stack of
-                        [] -> error("Error in take" ++ " " ++ show i ++ show w)
-                        b  -> head stack
-          newStack = case stack of
-                        [] -> []
-                        b  -> tail stack
-          (l,r) = splitAt i w
+          stack    = (w !! i)
+          fstItem  = head stack
+          newStack = tail stack
+          (l,r)    = splitAt i w
           newWorld = l ++ [newStack] ++ (tail r)
 
 
@@ -141,7 +137,7 @@ convertWorld :: Int -> World -> PDDLWorld
 convertWorld n []     = []
 convertWorld n (c:cs) = (reverse (createPDDL n c)):convertWorld (n+1) cs
 			where
-				createPDDL k [] = []
+				createPDDL k [] = [] 
 				createPDDL k (x:xs) = 
 				 Primative x ("floor-" ++ (show k)) :[Primative (c !! (i+1)) (c !! i)
 				  | i <-[0..length xs -1]]
@@ -156,14 +152,16 @@ convertMoveToWorld ((x,y):m) w  = do
                      convertMoveToWorld m nw'
 
 
-medWorld :: PDDLWorld
-medWorld = convertWorld 0 [["e"],["a","l"],[],[],["i","h","j"],[],[],["k","g","c","b"],[],["d","m","f"]]
+medWorld :: World
+medWorld = [["e"],["a","l"],[],[],["i","h","j"],[],[],["k","g","c","b"],[],["d","m","f"]]
+complexWorld :: World 
+complexWorld = [["e"],["a","l"],["i","h","j"],["c","k","g","b"],["d","m","f"]]
 
-testWorld :: PDDLWorld
-testWorld = convertWorld 0 [["e"],["g","l"],[],["k","m","f"],[]]
+testWorld :: World
+testWorld = [["e"],["g","l"],[],["k","m","f"],[]]
 
-simpleWorld :: PDDLWorld
-simpleWorld = convertWorld 0 [["e"],[],[],[],[]]
+simpleWorld :: World
+simpleWorld = [["e"],[],[],[],[]]
 
 
 

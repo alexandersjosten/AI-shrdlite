@@ -16,13 +16,14 @@ import HelpFunctions
 solve :: World -> Id -> Objects -> Goal -> Plan
 solve world holding objects goal = concat [[" pick " ++ show x, "drop " ++ show y] | (x,y)<-allMoves]
     where
-        allMoves = fst $ runDfs (Primative "e" "floor-1") world
+        allMoves = fst $ runDfs [(Primative "e" "l"),(Primative "l" "g"),(Primative "g" "k")] world
 
 -- Breth first search, bad version
-runDfs :: PDDL -> World -> ([Move],PDDLWorld)
+runDfs :: [PDDL] -> World -> ([Move],PDDLWorld)
 runDfs g w = safeHead $ filter (/= ([],[])) [ dfs i ss g wP [] [wP] | i<-[(sDepth)..]]
 				where
-					(sDepth,ss) = findStuff w g
+					stuff = map (findStuff w) g
+					(sDepth,ss) = maximum' stuff
 					wP = (convertWorld 0 w)
 
 -- (minDepth,(smallerStack,BiggerStack))
@@ -42,22 +43,19 @@ findStuff w (Primative a b)
 					let stacknr = head $ elemIndices False (map isNothing (map (findIndex (id==)) w))
 					let height  = head $ findIndices (id==) (reverse (w !! stacknr))
 					(stacknr,height)
-			returnV (s1',h1') (s2',h2') = if h1'>h2' then (h1'+h2'+2,(s2',s1')) else (h1'+h2'+2,(s1',s2'))
+			returnV (s1',h1') (s2',h2') | s1'==s2'  =  if h1'>h2' then (h1'+1,(s2',s1')) else (h2'+1 ,(s1',s2'))
+										| otherwise = if h1'>h2' then (h1'+h2'+2,(s2',s1')) else (h1'+h2'+2,(s1',s2'))
 
 			
 
 
 -- Starts going down the left most tree. Depth-first-search, with depth level
-dfs :: Int -> (Int,Int) -> PDDL -> PDDLWorld -> [Move] -> [PDDLWorld] ->  ([Move],PDDLWorld)
-dfs 0 _ _ w ms _   = ([],[])
+dfs :: Int -> (Int,Int) -> [PDDL] -> PDDLWorld -> [Move] -> [PDDLWorld] ->  ([Move],PDDLWorld)
+dfs 0 _ g w ms _   = if  and (map (checkGoal w) g) then (ms,w) else ([],[])
 dfs d ss g w ms wos =  do
         let wos' = bfsStep ss (ms,w) (w:wos)
-        let goal = checkAllW wos' 
-        if goal == [] then safeHead $ filter (/= ([],[])) [dfs (d-1) ss g (snd i) (fst i) ((snd i):wos) | i<-wos'] else head goal 
-            where
-                checkAllW [] = []
-                checkAllW ((mvs,wo):rest)  | checkGoal g wo =  [(mvs,wo)]
-                                           | otherwise = checkAllW rest
+        safeHead $ filter (/= ([],[])) [dfs (d-1) ss g (snd i) (fst i) ((snd i):wos) | i<-wos']
+
 --print $ runDfs (Primative "e" "floor-4") testWorld                                       
           
 -- Return head of list, if list is  empty returns ([].[])                                 
@@ -67,7 +65,7 @@ safeHead lst | lst == [] = ([],[])
                                            
 -- Goes one level down in the tree and return list of Worlds and the moves to get to that world
 bfsStep :: (Int,Int) -> ([Move],PDDLWorld) -> [PDDLWorld]->  [([Move],PDDLWorld)]
-bfsStep (s1,s2) (mvs,w) ws = [k  | i <- (sortMoves s2 (getAllMove w)),let k = sim i, snd (k) `notElem` ws ]
+bfsStep ss (mvs,w) ws = [k  | i <- (sortMoves ss (getAllMove w)),let k = sim i, snd (k) `notElem` ws ]
                      where
                         sim (x,y) = do
                              let (i,nw) = take' x w
@@ -76,10 +74,13 @@ bfsStep (s1,s2) (mvs,w) ws = [k  | i <- (sortMoves s2 (getAllMove w)),let k = si
                              
                              
                              
-sortMoves :: Int -> [Move] -> [Move]
-sortMoves ss mv = sortBy (sortGT ss) mv
+sortMoves :: (Int,Int) -> [Move] -> [Move]
+sortMoves (s1,s2) mv =  sortBy (sortGT s2) (sortBy (sortGT s1) mv)
 
 --sortGT :: Int -> [Move] -> [Move]
 sortGT i (a1, b1) (a2, b2)
   | a1 == i = LT
   | otherwise = GT
+
+
+

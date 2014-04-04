@@ -104,8 +104,8 @@ getObjMoves o ws  = [ i | i<-[0..length ws -1] , (ws !! i)  == []  || o `okMove`
 
 
 -- Check if the world contains the goal
-checkGoal :: PDDL -> PDDLWorld-> Bool
-checkGoal g w = or $ map (elem g) w 
+checkGoal ::  PDDLWorld-> PDDL -> Bool
+checkGoal w g = or $ map (elem g) w 
 
 
 --Add object to the top of stack i and return the new world
@@ -137,7 +137,7 @@ convertWorld :: Int -> World -> PDDLWorld
 convertWorld n []     = []
 convertWorld n (c:cs) = (reverse (createPDDL n c)):convertWorld (n+1) cs
 			where
-				createPDDL k [] = [] 
+				createPDDL k [] = []
 				createPDDL k (x:xs) = 
 				 Primative x ("floor-" ++ (show k)) :[Primative (c !! (i+1)) (c !! i)
 				  | i <-[0..length xs -1]]
@@ -150,10 +150,19 @@ convertMoveToWorld ((x,y):m) w  = do
                      let (i,nw) = take' x w
                      let nw'    = drop' y nw i
                      convertMoveToWorld m nw'
+                     
+maximum' :: Ord t => [(t, a)] -> (t, a)
+maximum' []     = error "maximum of empty list"
+maximum' (x:xs) = maxTail x xs
+  where maxTail currentMax [] = currentMax
+        maxTail (m, n) (p:ps)
+          | m < (fst p) = maxTail p ps
+          | otherwise   = maxTail (m, n) ps
 
 
 medWorld :: World
 medWorld = [["e"],["a","l"],[],[],["i","h","j"],[],[],["k","g","c","b"],[],["d","m","f"]]
+
 complexWorld :: World 
 complexWorld = [["e"],["a","l"],["i","h","j"],["c","k","g","b"],["d","m","f"]]
 

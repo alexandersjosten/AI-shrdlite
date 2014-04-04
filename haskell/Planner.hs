@@ -16,7 +16,7 @@ import HelpFunctions
 solve :: World -> Id -> Objects -> Goal -> Plan
 solve world holding objects goal = concat [[" pick " ++ show x, "drop " ++ show y] | (x,y)<-allMoves]
     where
-        allMoves = fst $ runDfs [(Primative "e" "l"),(Primative "l" "g"),(Primative "g" "k")] world
+        allMoves = fst $ runDfs [(PDDL Ontop "g" "k")] world
 
 -- Breth first search, bad version
 runDfs :: [PDDL] -> World -> ([Move],PDDLWorld)
@@ -28,25 +28,19 @@ runDfs g w = safeHead $ filter (/= ([],[])) [ dfs i ss g wP [] [wP] | i<-[(sDept
 
 -- (minDepth,(smallerStack,BiggerStack))
 findStuff :: World -> PDDL -> (Int,(Int,Int))
-findStuff w (Primative a b) 
+findStuff w (PDDL Ontop a b) 
 					| length b > 1 =  do 
 							 let s2      = digitToInt (last b) -- b is a floor
 							 let h2      = length (w !! s2)
-							 let (s1,h1) = findSAH a
+							 let (s1,h1) = findSAH a w
 							 returnV (s1,h1) (s2,h2)
 					| otherwise   = do
-							 let (s1,h1) = findSAH a
-							 let (s2,h2) = findSAH b
+							 let (s1,h1) = findSAH a w
+							 let (s2,h2) = findSAH b w
 							 returnV (s1,h1) (s2,h2)
 		where
-			findSAH id = do
-					let stacknr = head $ elemIndices False (map isNothing (map (findIndex (id==)) w))
-					let height  = head $ findIndices (id==) (reverse (w !! stacknr))
-					(stacknr,height)
 			returnV (s1',h1') (s2',h2') | s1'==s2'  =  if h1'>h2' then (h1'+1,(s2',s1')) else (h2'+1 ,(s1',s2'))
 										| otherwise = if h1'>h2' then (h1'+h2'+2,(s2',s1')) else (h1'+h2'+2,(s1',s2'))
-
-			
 
 
 -- Starts going down the left most tree. Depth-first-search, with depth level

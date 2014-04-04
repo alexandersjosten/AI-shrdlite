@@ -5,7 +5,7 @@ import CombinatorParser
 import Text.JSON
 import Text.JSON.Types
 import Data.List (findIndex)
-import Text.Groom
+--import Text.Groom
 import Data.Maybe
 
 import HelpFunctions hiding (Floor, Box, Ball)
@@ -59,4 +59,4 @@ translateLocation :: Location -> Maybe Object
 translateLocation (Relative _ e) = translateEntity e
 
 createPDDL :: (Int, Int) -> [PDDL]
-createPDDL (i1, i2) = [Primative (fst (listOfObjects !! i1)) (fst (listOfObjects !! i2))]
+createPDDL (i1, i2) = [PDDL Ontop (fst (listOfObjects !! i1)) (fst (listOfObjects !! i2))]

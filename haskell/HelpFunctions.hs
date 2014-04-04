@@ -2,7 +2,9 @@ module HelpFunctions where
 
 
 import Text.JSON
-import Data.List (findIndex)
+import Data.List
+import Data.Maybe
+
 import ShrdliteGrammar
 
 type Objects = JSObject JSValue
@@ -17,12 +19,12 @@ type Move = (Int,Int) -- (Pick int, Drop int)
 
 -- First, divide the features that describe the world into primitive 
 -- and derived features. Definite clauses are 
-data PDDL = Primative Id Id
+data PDDL = PDDL Relation Id Id
 
 
 -- With this Eq, we can check if a PDDLworld == PDDLworld
 instance Eq PDDL where
-    (Primative n11 n12) == (Primative n21 n22) = n11 == n21 && n12 == n22
+    (PDDL Ontop n11 n12) == (PDDL Ontop n21 n22) = n11 == n21 && n12 == n22
 --(ontop a b), (ontop b floor-n)
 
 
@@ -44,14 +46,20 @@ listOfObjects = [("a", Object Large Green Brick)
 				]
 
 instance Show PDDL where
-	show (Primative i1 i2) = "ontop " ++ i1 ++ " "  ++ i2
+	show (PDDL Ontop i1 i2) = "ontop " ++ i1 ++ " "  ++ i2
 
 -- main = print $ (convertWorld 0 [["e"],["g","l"],[],["k","m","f"],[]]) 
 
+-- Find stack number and hight from Id
+findSAH :: Id -> World -> (Int,Int)		
+findSAH id w =  do
+					let stacknr = head $ elemIndices False (map isNothing (map (findIndex (id==)) w))
+					let height  = head $ findIndices (id==) (reverse (w !! stacknr))
+					(stacknr,height)
 
 -- Returns the first id of a PDDL, the one that is on top        
 getId :: PDDL -> Id
-getId (Primative a _) = a           
+getId (PDDL Ontop a _) = a           
 
 -- Returns object from id
 getObjId :: Id -> Object
@@ -60,7 +68,7 @@ getObjId id = case lookup id listOfObjects of
                     Just a  -> a
                  
                  
--- Returns the Object that is on top in a Primative
+-- Returns the Object that is on top in a Ontop
 getIdPrim :: PDDL -> Object
 getIdPrim pd = getObjId $ getId pd
  
@@ -104,8 +112,10 @@ getObjMoves o ws  = [ i | i<-[0..length ws -1] , (ws !! i)  == []  || o `okMove`
 
 
 -- Check if the world contains the goal
-checkGoal :: PDDL -> PDDLWorld-> Bool
-checkGoal g w = or $ map (elem g) w 
+checkGoal ::  PDDLWorld-> PDDL -> Bool
+checkGoal w (PDDL Ontop a b) = or $ map (elem (PDDL Ontop a b)) w 
+
+
 
 
 --Add object to the top of stack i and return the new world
@@ -114,14 +124,8 @@ drop' i  w  id = newWorld
         where
           stack = (w !! i)
           fstItemid = case stack of 
-                      [] -> Primative id ("floor-" ++ (show i))
-                      b  -> do
-                            let obj1 = getObjId id
-                            let obj2 = getObjId oldId
-                            if (okMove obj1  obj2) 
-                            then (Primative id oldId)  
-                            else error ("dropERROR i:" ++ show i ++ " w:" ++ show w ++ " id: " ++ show id)
-          oldId = getId (head stack)
+                      [] -> PDDL Ontop id ("floor-" ++ (show i))
+                      b  -> PDDL Ontop id (getId (head stack))
           (l,r) = splitAt i w
           newWorld = l ++[(fstItemid : stack)] ++ tail r
 
@@ -131,14 +135,10 @@ drop' i  w  id = newWorld
 take' :: Int -> PDDLWorld -> (Id,PDDLWorld)
 take' i w = (getId fstItem ,newWorld)
         where
-          stack = (w !! i)
-          fstItem = case stack of
-                        [] -> error("Error in take" ++ " " ++ show i ++ show w)
-                        b  -> head stack
-          newStack = case stack of
-                        [] -> []
-                        b  -> tail stack
-          (l,r) = splitAt i w
+          stack    = (w !! i)
+          fstItem  = head stack
+          newStack = tail stack
+          (l,r)    = splitAt i w
           newWorld = l ++ [newStack] ++ (tail r)
 
 
@@ -149,7 +149,7 @@ convertWorld n (c:cs) = (reverse (createPDDL n c)):convertWorld (n+1) cs
 			where
 				createPDDL k [] = []
 				createPDDL k (x:xs) = 
-				 Primative x ("floor-" ++ (show k)) :[Primative (c !! (i+1)) (c !! i)
+				 PDDL Ontop x ("floor-" ++ (show k)) :[PDDL Ontop (c !! (i+1)) (c !! i)
 				  | i <-[0..length xs -1]]
 
             
@@ -160,14 +160,28 @@ convertMoveToWorld ((x,y):m) w  = do
                      let (i,nw) = take' x w
                      let nw'    = drop' y nw i
                      convertMoveToWorld m nw'
+                     
+-- http://stackoverflow.com/questions/18118280/finding-maximum-element-in-a-list-of-tuples                    
+maximum' :: Ord t => [(t, a)] -> (t, a)
+maximum' []     = error "maximum of empty list"
+maximum' (x:xs) = maxTail x xs
+  where maxTail currentMax [] = currentMax
+        maxTail (m, n) (p:ps)
+          | m < (fst p) = maxTail p ps
+          | otherwise   = maxTail (m, n) ps
 
 
+medWorld :: World
+medWorld = [["e"],["a","l"],[],[],["i","h","j"],[],[],["k","g","c","b"],[],["d","m","f"]]
 
-testWorld :: PDDLWorld
-testWorld = convertWorld 0 [["e"],["g","l"],[],["k","m","f"],[]]
+complexWorld :: World 
+complexWorld = [["e"],["a","l"],["i","h","j"],["c","k","g","b"],["d","m","f"]]
 
-simpleWorld :: PDDLWorld
-simpleWorld = convertWorld 0 [["e"],[],[],[],[]]
+testWorld :: World
+testWorld = [["e"],["g","l"],[],["k","m","f"],[]]
+
+simpleWorld :: World
+simpleWorld = [["e"],[],[],[],[]]
 
 
 

@@ -32,6 +32,7 @@ jsonMain jsinput = makeObj result
       trees     = parse command utterance :: [Command]
 
       goals     = [goal | tree <- trees, goal <- interpret world holding objects tree] :: [Goal]
+      --goals     = [goal | tree <- trees, goal <- interpret' tree] :: [PDDL]
 
       plan      = solve world holding objects (head goals) :: Plan
 
@@ -45,7 +46,6 @@ jsonMain jsinput = makeObj result
                    ("trees",     showJSON (map show trees)),
                    ("goals",     if length trees >= 1 then showJSON goals else JSNull),
                    ("plan",      if length goals == 1 then showJSON plan  else JSNull),
-                   ("output",    showJSON output),
-                   ("Test",		 showJSON (show (convertWorld 0 world)))
+                   ("output",    showJSON output)
                   ]
 

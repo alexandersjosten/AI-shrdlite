@@ -13,10 +13,11 @@ import HelpFunctions
 
 
 
+-- Case for holding objects and goals when only taking up objects is next.
 solve :: World -> Id -> Objects -> Goal -> Plan
 solve world holding objects goal = concat [[" pick " ++ show x, "drop " ++ show y] | (x,y)<-allMoves]
     where
-        allMoves = fst $ runDfs [(PDDL Ontop "g" "k")] world
+        allMoves = fst $ runDfs [(PDDL Above "f" "l")] world
 
 -- Breth first search, bad version
 runDfs :: [PDDL] -> World -> ([Move],PDDLWorld)
@@ -24,13 +25,16 @@ runDfs g w = safeHead $ filter (/= ([],[])) [ dfs i ss g wP [] [wP] | i<-[(sDept
 				where
 					stuff = map (findStuff w) g
 					(sDepth,ss) = maximum' stuff
-					wP = (convertWorld 0 w)
+					wP = (convertWorld w)
 
+
+-- Heuristics for solving goles
+-- Only works for OnTop now.
 -- (minDepth,(smallerStack,BiggerStack))
 findStuff :: World -> PDDL -> (Int,(Int,Int))
 findStuff w (PDDL Ontop a b) 
 					| length b > 1 =  do 
-							 let s2      = digitToInt (last b) -- b is a floor
+							 let s2      = head . map snd . take 1 . sort $ zip w [0..] -- b is a floor
 							 let h2      = length (w !! s2)
 							 let (s1,h1) = findSAH a w
 							 returnV (s1,h1) (s2,h2)
@@ -41,6 +45,7 @@ findStuff w (PDDL Ontop a b)
 		where
 			returnV (s1',h1') (s2',h2') | s1'==s2'  =  if h1'>h2' then (h1'+1,(s2',s1')) else (h2'+1 ,(s1',s2'))
 										| otherwise = if h1'>h2' then (h1'+h2'+2,(s2',s1')) else (h1'+h2'+2,(s1',s2'))
+findStuff w (PDDL _ a b) = findStuff w (PDDL Ontop a b) -- Need to add heuristics for above,under.....
 
 
 -- Starts going down the left most tree. Depth-first-search, with depth level
@@ -49,8 +54,7 @@ dfs 0 _ g w ms _   = if  and (map (checkGoal w) g) then (ms,w) else ([],[])
 dfs d ss g w ms wos =  do
         let wos' = bfsStep ss (ms,w) (w:wos)
         safeHead $ filter (/= ([],[])) [dfs (d-1) ss g (snd i) (fst i) ((snd i):wos) | i<-wos']
-
---print $ runDfs (Primative "e" "floor-4") testWorld                                       
+                                      
           
 -- Return head of list, if list is  empty returns ([].[])                                 
 safeHead :: [([Move],PDDLWorld)] -> ([Move],PDDLWorld)
@@ -67,9 +71,10 @@ bfsStep ss (mvs,w) ws = [k  | i <- (sortMoves ss (getAllMove w)),let k = sim i, 
                              (mvs ++ [(x,y)],nw')
                              
                              
-                             
+-- Sort what stacks to start working on
 sortMoves :: (Int,Int) -> [Move] -> [Move]
 sortMoves (s1,s2) mv =  sortBy (sortGT s2) (sortBy (sortGT s1) mv)
+
 
 --sortGT :: Int -> [Move] -> [Move]
 sortGT i (a1, b1) (a2, b2)

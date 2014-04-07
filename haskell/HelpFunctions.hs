@@ -48,13 +48,11 @@ listOfObjects = [("a", Object Large Green Brick)
 instance Show PDDL where
 	show (PDDL Ontop i1 i2) = "ontop " ++ i1 ++ " "  ++ i2
 
--- main = print $ (convertWorld 0 [["e"],["g","l"],[],["k","m","f"],[]]) 
-
 -- Find stack number and hight from Id
 findSAH :: Id -> World -> (Int,Int)		
 findSAH id w =  do
 					let stacknr = head $ elemIndices False (map isNothing (map (findIndex (id==)) w))
-					let height  = head $ findIndices (id==) (reverse (w !! stacknr))
+					let height  = head $ findIndices (id==) (reverse (w !! stacknr)) 
 					(stacknr,height)
 
 -- Returns the first id of a PDDL, the one that is on top        
@@ -111,20 +109,46 @@ getObjMoves :: Object -> PDDLWorld -> [Int]
 getObjMoves o ws  = [ i | i<-[0..length ws -1] , (ws !! i)  == []  || o `okMove` getIdPrim (head (ws !! i)) ]
 
 
--- Check if the world contains the goal
+-- Check if the world contains the goal, handles spatial relations
 checkGoal ::  PDDLWorld-> PDDL -> Bool
-checkGoal w (PDDL Ontop a b) = or $ map (elem (PDDL Ontop a b)) w 
+checkGoal w (PDDL Ontop a b)   = or $ map (elem (PDDL Ontop a b)) w 
+checkGoal w (PDDL Inside a b)  = or $ map (elem (PDDL Ontop a b)) w 
+checkGoal w (PDDL Above a b)   = aboveOrUnder (a,b) (convertPDDLWorld w)
+checkGoal w (PDDL Under a b)   = aboveOrUnder (b,a) (convertPDDLWorld w)
+checkGoal w (PDDL Beside a b)  = besideOf (a,b) (convertPDDLWorld w)
+checkGoal w (PDDL Leftof a b)  = leftOrRightOf (a,b) (convertPDDLWorld w)
+checkGoal w (PDDL Rightof a b) = leftOrRightOf (b,a) (convertPDDLWorld w)
+        
 
 
+-- If the first ID is above the secound, then return true
+aboveOrUnder :: (Id,Id) -> World -> Bool
+aboveOrUnder (t,u) w = do
+                let (s1,a) = findSAH  t w
+                let (s2,b) = findSAH  u w
+                s1 == s2 && a<b
 
+-- if the first ID is left of the secound, then return true
+leftOrRightOf :: (Id,Id) -> World -> Bool
+leftOrRightOf (t,u) w = do
+                let (a,_) = findSAH  t w
+                let (b,_) = findSAH  u w
+                a<b
 
+-- If Ids are in adjecent stacks, then return true
+besideOf :: (Id,Id) -> World -> Bool
+besideOf (t,u) w = do 
+        let (a,_) = findSAH  t w
+        let (b,_) = findSAH  u w
+        abs (a - b) == 1 
+        
 --Add object to the top of stack i and return the new world
 drop' :: Int -> PDDLWorld -> Id -> PDDLWorld
 drop' i  w  id = newWorld
         where
           stack = (w !! i)
           fstItemid = case stack of 
-                      [] -> PDDL Ontop id ("floor-" ++ (show i))
+                      [] -> PDDL Ontop id ("floor")
                       b  -> PDDL Ontop id (getId (head stack))
           (l,r) = splitAt i w
           newWorld = l ++[(fstItemid : stack)] ++ tail r
@@ -142,17 +166,24 @@ take' i w = (getId fstItem ,newWorld)
           newWorld = l ++ [newStack] ++ (tail r)
 
 
--- An idea to set up the world in PDDL form
-convertWorld :: Int -> World -> PDDLWorld
-convertWorld n []     = []
-convertWorld n (c:cs) = (reverse (createPDDL n c)):convertWorld (n+1) cs
+-- Convert world from given form to PDDL form
+convertWorld :: World -> PDDLWorld
+convertWorld []     = []
+convertWorld (c:cs) = (reverse (createPDDL c)):convertWorld  cs
 			where
-				createPDDL k [] = []
-				createPDDL k (x:xs) = 
-				 PDDL Ontop x ("floor-" ++ (show k)) :[PDDL Ontop (c !! (i+1)) (c !! i)
+				createPDDL [] = []
+				createPDDL(x:xs) = 
+				 PDDL Ontop x ("floor") :[PDDL Ontop (c !! (i+1)) (c !! i)
 				  | i <-[0..length xs -1]]
-
-            
+				  
+-- Convert world from PDDL form to given form
+convertPDDLWorld :: PDDLWorld -> World
+convertPDDLWorld [] = []
+convertPDDLWorld (c:cs) = (reverse (createPDDL c)):convertPDDLWorld  cs
+			where
+				createPDDL [] = []
+				createPDDL((PDDL Ontop a _):xs) =[a] ++ createPDDL xs
+        
 -- Takes list of moves and a world, and returns a new world after the moves have been made
 convertMoveToWorld :: [Move] -> PDDLWorld -> PDDLWorld
 convertMoveToWorld [] w         = w
@@ -171,6 +202,7 @@ maximum' (x:xs) = maxTail x xs
           | otherwise   = maxTail (m, n) ps
 
 
+-- test worlds
 medWorld :: World
 medWorld = [["e"],["a","l"],[],[],["i","h","j"],[],[],["k","g","c","b"],[],["d","m","f"]]
 

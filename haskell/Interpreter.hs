@@ -19,7 +19,7 @@ import HelpFunctions hiding (Floor, Box, Ball)
   map (isInfixOf cmd) c    :: [Bool]
 -}
 interpret :: World -> Id -> Objects -> Command -> [Goal]
-interpret world holding objects tree = error $ show world ++ "\n" ++ show objects ++ "\n" ++ show tree
+interpret world holding objects tree = [True] --error $ show world ++ "\n" ++ show objects ++ "\n" ++ show tree
 
 interpret' :: Command -> [PDDL]
 interpret' tree = map createPDDL (translateCommand tree)

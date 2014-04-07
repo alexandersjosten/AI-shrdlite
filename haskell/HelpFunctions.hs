@@ -46,7 +46,13 @@ listOfObjects = [("a", Object Large Green Brick)
 				]
 
 instance Show PDDL where
-	show (PDDL Ontop i1 i2) = "ontop " ++ i1 ++ " "  ++ i2
+  show (PDDL Beside  i1 i2) = "beside "  ++ i1 ++ " " ++ i2
+  show (PDDL Leftof  i1 i2) = "leftof "  ++ i1 ++ " " ++ i2
+  show (PDDL Rightof i1 i2) = "rightof " ++ i1 ++ " " ++ i2
+  show (PDDL Above   i1 i2) = "above "   ++ i1 ++ " " ++ i2
+  show (PDDL Ontop   i1 i2) = "ontop "   ++ i1 ++ " " ++ i2
+  show (PDDL Under   i1 i2) = "under "   ++ i1 ++ " " ++ i2
+  show (PDDL Inside  i1 i2) = "inside "  ++ i1 ++ " " ++ i2
 
 -- Find stack number and hight from Id
 findSAH :: Id -> World -> (Int,Int)		

@@ -14,10 +14,10 @@ import HelpFunctions
 
 
 -- Case for holding objects and goals when only taking up objects is next.
-solve :: World -> Id -> Objects -> Goal -> Plan
+solve :: World -> Id -> Objects -> [PDDL] -> Plan
 solve world holding objects goal = concat [[" pick " ++ show x, "drop " ++ show y] | (x,y)<-allMoves]
     where
-        allMoves = fst $ runDfs [(PDDL Above "f" "l")] world
+        allMoves = fst $ runDfs goal world
 
 -- Breth first search, bad version
 runDfs :: [PDDL] -> World -> ([Move],PDDLWorld)
@@ -44,7 +44,7 @@ findStuff w (PDDL Ontop a b)
 							 returnV (s1,h1) (s2,h2)
 		where
 			returnV (s1',h1') (s2',h2') | s1'==s2'  =  if h1'>h2' then (h1'+1,(s2',s1')) else (h2'+1 ,(s1',s2'))
-										| otherwise = if h1'>h2' then (h1'+h2'+2,(s2',s1')) else (h1'+h2'+2,(s1',s2'))
+										| otherwise = if h1'>h2' then (h1'+h2'+1,(s2',s1')) else (h1'+h2'+1,(s1',s2'))
 findStuff w (PDDL _ a b) = findStuff w (PDDL Ontop a b) -- Need to add heuristics for above,under.....
 
 

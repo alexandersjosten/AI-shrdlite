@@ -32,6 +32,7 @@ runDfs g w = safeHead $ filter (/= ([],[])) [ dfs i ss g wP [] [wP] | i<-[(sDept
 -- Only works for OnTop now.
 -- (minDepth,(smallerStack,BiggerStack))
 findStuff :: World -> PDDL -> (Int,(Int,Int))
+findStuff w (PDDL Inside a b)  = findStuff w (PDDL Ontop a b)
 findStuff w (PDDL Ontop a b) 
 					| length b > 1 =  do 
 							 let s2      = head . map snd . take 1 . sort $ zip w [0..] -- b is a floor
@@ -42,10 +43,40 @@ findStuff w (PDDL Ontop a b)
 							 let (s1,h1) = findSAH a w
 							 let (s2,h2) = findSAH b w
 							 returnV (s1,h1) (s2,h2)
-		where
+					where
 			returnV (s1',h1') (s2',h2') | s1'==s2'  =  if h1'>h2' then (h1'+1,(s2',s1')) else (h2'+1 ,(s1',s2'))
 										| otherwise = if h1'>h2' then (h1'+h2'+1,(s2',s1')) else (h1'+h2'+1,(s1',s2'))
-findStuff w (PDDL _ a b) = findStuff w (PDDL Ontop a b) -- Need to add heuristics for above,under.....
+findStuff w (PDDL Above a b) = do
+                            let (s1,h1) = findSAH a w
+                            let (s2,_) = findSAH b w
+                            (h1+1,(s2,s1)) -- Maybe modify the smaller stack
+findStuff w (PDDL Under a b) = findStuff w (PDDL Above b a)
+findStuff w (PDDL Leftof a b) = do
+                            let (s1,h1) = findSAH a w
+                            let (s2,h2) = findSAH b w
+                            getSuff (s1,h1) (s2,h2)
+                    where 
+                    getSuff (s1',h1') (s2',h2') 
+                        | s1' == s2' = if h1'> h2' then (h2'+1,(s1',s2')) else (h1'+1, (s1',s2'))
+                        | s2' == 0 && s1' == length w = ((h2'+1)+(h1'+1),(s1',s2'))
+                        | s2' == 0 = (h2'+1,(s2',s2'))
+                        | s1' < s2' = (0,(0,0))
+                        | otherwise = if h1' < h2' then (h1'+1,(s2',s1')) else (h2'+1,(s1',s2'))
+findStuff w (PDDL Rightof a b) = findStuff w (PDDL Leftof b a)
+findStuff w (PDDL Beside a b) = do 
+                        let (s1,h1) = findSAH a w
+                        let (s2,h2) = findSAH b w
+                        getSuff (s1,h1) (s2,h2)
+                    where 
+                    getSuff (s1',h1') (s2',h2') 
+                        | s1' == s2' = if h1'> h2' then (h2'+1,(s1',s2')) else (h1'+1, (s1',s2'))
+                        | s2' == 0 = (h1'+1,(1,s1'))
+                        | s2' == ((length w) - 1) = (h1'+1,((length w -1),s1'))
+                        |otherwise  = do
+                                        let left  = length (w !! (s2'-1))
+                                        let right = length (w !! (s2'+1))
+                                        if right > left then (h1'+1,(s2' -1,s1')) else (h1'+1,(s2' + 1,s1'))
+
 
 
 -- Starts going down the left most tree. Depth-first-search, with depth level

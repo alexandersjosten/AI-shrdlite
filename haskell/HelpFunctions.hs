@@ -1,6 +1,5 @@
 module HelpFunctions where 
 
-
 import Text.JSON
 import Data.List
 import Data.Maybe

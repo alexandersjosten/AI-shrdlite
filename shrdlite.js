@@ -428,10 +428,14 @@ function userInput() {
     disableInput();
 
     sayUtterance("user", userinput);
-
+    currentWorld.hold = "yes";
+	if (currentWorld.holding == null) {
+		currentWorld.hold = "no";
+	}
     var ajaxdata = {'world': currentWorld.world,
                     'objects': currentWorld.objects,
                     'holding': currentWorld.holding,
+                    'hold': currentWorld.hold,
                     'state': currentWorld.state,
                     'utterance': userinput.split(/\s+/)
                    };

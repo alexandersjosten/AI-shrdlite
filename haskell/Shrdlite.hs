@@ -45,7 +45,7 @@ jsonMain jsinput = makeObj result
 
       result    = [("utterance", showJSON utterance),
                    ("trees",     showJSON (map show trees)),
-                   ("goals",     if length trees >= 1 then showJSON goals else JSNull),
+                   ("goals",     if length trees >= 1 then showJSON (map show goals') else JSNull),
                    ("plan",      if length goals == 1 then showJSON plan  else JSNull),
                    ("output",    showJSON output)
                   ]

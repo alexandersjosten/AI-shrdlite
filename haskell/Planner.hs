@@ -34,6 +34,7 @@ amIAlone i w =  if or $ checkForm (Object s c f) objects
                 objects = (convertToObjects w)  
 
 talkingBastard :: [Move] -> PDDLWorld -> Plan
+talkingBastard [] _         = ["I found it "]
 talkingBastard ((x,y):[]) w = do
                  let (i,nw) = take' x w
                  let stack =  (w !! y)
@@ -49,9 +50,9 @@ talkingBastard ((x,y):ms) w = do
 -- Case for holding objects and goals when only taking up objects is next.
 solve :: World -> Id -> Id -> [PDDL] -> Plan
 solve world hold holding  ((PDDL t a b):goal)
-                          | hold /= "no" = if holding == a && b=="" then [] else ["drop " ++ show holdMove ++ " "] ++ (solve newWorld "no" "-" goal')
-                          | b == ""        =  talkingBastard allMovesT (convertWorld world) ++ [" and now I'm holding the " ++ amIAlone a nw," pick " ++ show (fst $ findSAH a world)] --concat [[" pick " ++ show x, "drop " ++ show y] | (x,y)<-allMovesT] ++ [" pick " ++ show (fst $ findSAH a world)]
-                          | otherwise      =  talkingBastard allMoves (convertWorld world)-- concat [[" pick " ++ show x, "drop " ++ show y] | (x,y)<-allMoves] 
+                          | hold /= "no" = if holding == a && b=="" then [] else ["I drop " ++ amIAlone a (convertWorld world),"drop " ++ show holdMove ++ " "] ++ (solve newWorld "no" "-" goal')
+                          | b == ""        =  talkingBastard allMovesT (convertWorld world) ++ [" and now I'm holding the " ++ amIAlone a nw," pick " ++ show (fst $ findSAH a world)]
+                          | otherwise      =  talkingBastard allMoves (convertWorld world)
                                             
     where
         allMoves   = fst $ runDfs goal' world

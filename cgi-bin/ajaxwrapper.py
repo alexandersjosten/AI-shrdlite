@@ -6,28 +6,20 @@ import os
 import cgi
 from subprocess import Popen, PIPE, STDOUT
 
-################################################################################
-## IMPORTANT NOTE:
-## Uncomment the code for the programming language that you want to use.
-## And don't forget to edit the absolute path for your script -- 
-## it could be /usr/bin or /usr/local/bin or /opt/local/bin or anything else,
-## not to mention the horrendous Windows paths...
 
-# # Java
-# SCRIPTDIR = 'javaprolog'
-# SCRIPT = ['/usr/bin/java', '-cp', 'json-simple-1.1.1.jar:gnuprologjava-0.2.6.jar:.', 'Shrdlite']
-
-# # SWI Prolog
-# SCRIPTDIR = 'javaprolog'
-# SCRIPT = ['/usr/local/bin/swipl', '-q', '-g', 'main,halt', '-t', 'halt(1)', '-s', 'shrdlite.pl']
 
 # # Haskell
 SCRIPTDIR = 'haskell'
-SCRIPT = ['/usr/bin/runhaskell', 'Shrdlite.hs']
 
-# # Python
-# SCRIPTDIR = 'python'
-# SCRIPT = ['/usr/bin/python', 'shrdlite.py']
+# To run NON compiled code
+# SCRIPT = ['/usr/bin/runhaskell', 'Shrdlite.hs']
+
+
+# Run compiled code with garbage collection off
+# compile with this command: ghc -O2 -rtsopts Shrdlite.hs
+SCRIPT = ['./Shrdlite',' +RTS -A2G']
+
+
 
 ################################################################################
 

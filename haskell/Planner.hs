@@ -67,7 +67,8 @@ runDfs :: [PDDL] -> World -> ([Move],PDDLWorld)
 runDfs g w = safeHead $ filter (/= ([],[])) [ dfs i ss g wP [] [wP] | i<-[(sDepth)..]]
 				where
 					stuff = map (findStuff w) g
-					(sDepth,ss) = maximum' stuff
+					(sDepth',ss) = maximum' stuff
+					sDepth = sDepth' + length g - 1
 					wP = (convertWorld w)
 					
 -- Starts going down the left most tree. Depth-first-search, with depth level

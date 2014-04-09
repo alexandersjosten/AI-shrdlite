@@ -14,11 +14,20 @@ import HelpFunctions
 
 
 -- Case for holding objects and goals when only taking up objects is next.
-solve :: World -> Id -> Objects -> [PDDL] -> Plan
-solve world holding objects goal = concat [[" pick " ++ show x, "drop " ++ show y] | (x,y)<-allMoves]
+solve :: World -> Id -> Id -> [PDDL] -> Plan
+solve world hold holding  ((PDDL t a b):goal) 
+                          | hold /= "no" = ["drop " ++ show holdMove ++ " "] ++ (solve newWorld "no" "-" goal')
+                          | b == ""        = concat [[" pick " ++ show x, "drop " ++ show y] | (x,y)<-allMovesT] ++ [" pick " ++ show (fst $ findSAH a world)]
+                          | otherwise      = concat [[" pick " ++ show x, "drop " ++ show y] | (x,y)<-allMoves] 
+                                            
     where
-        allMoves = fst $ runDfs goal world
-
+        allMoves   = fst $ runDfs goal' world
+        allMovesT  = fst $ runDfs [PDDL t a ""] world
+        holdMove   = head $ getObjMoves (getObjId holding) pddlWorld 
+        newWorld   = convertPDDLWorld $  drop' holdMove pddlWorld holding 
+        pddlWorld  = convertWorld world
+        goal' = ((PDDL t a b):goal)
+        
 -- Breth first search, bad version
 runDfs :: [PDDL] -> World -> ([Move],PDDLWorld)
 runDfs g w = safeHead $ filter (/= ([],[])) [ dfs i ss g wP [] [wP] | i<-[(sDepth)..]]
@@ -33,10 +42,13 @@ runDfs g w = safeHead $ filter (/= ([],[])) [ dfs i ss g wP [] [wP] | i<-[(sDept
 -- (minDepth,(smallerStack,BiggerStack))
 findStuff :: World -> PDDL -> (Int,(Int,Int))
 findStuff w (PDDL Inside a b)  = findStuff w (PDDL Ontop a b)
+findStuff w (PDDL Ontop a "")  = do 
+                                let (s1,h1) = findSAH a w
+                                (h1,(s1,s1))
 findStuff w (PDDL Ontop a b) 
 					| length b > 1 =  do 
 							 let s2      = head . map snd . take 1 . sort $ zip w [0..] -- b is a floor
-							 let h2      = length (w !! s2)
+							 let h2      = length (w !! s2) -1
 							 let (s1,h1) = findSAH a w
 							 returnV (s1,h1) (s2,h2)
 					| otherwise   = do

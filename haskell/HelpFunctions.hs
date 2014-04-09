@@ -18,7 +18,7 @@ type Move = (Int,Int) -- (Pick int, Drop int)
 
 -- First, divide the features that describe the world into primitive 
 -- and derived features. Definite clauses are 
-data PDDL = PDDL Relation Id Id
+data PDDL = PDDL Relation Id Id 
 
 
 -- With this Eq, we can check if a PDDLworld == PDDLworld
@@ -116,6 +116,7 @@ getObjMoves o ws  = [ i | i<-[0..length ws -1] , (ws !! i)  == []  || o `okMove`
 
 -- Check if the world contains the goal, handles spatial relations
 checkGoal ::  PDDLWorld-> PDDL -> Bool
+checkGoal w (PDDL Ontop a "")  = isFree a (convertPDDLWorld w)
 checkGoal w (PDDL Ontop a b)   = or $ map (elem (PDDL Ontop a b)) w 
 checkGoal w (PDDL Inside a b)  = or $ map (elem (PDDL Ontop a b)) w 
 checkGoal w (PDDL Above a b)   = aboveOrUnder (a,b) (convertPDDLWorld w)
@@ -125,7 +126,11 @@ checkGoal w (PDDL Leftof a b)  = leftOrRightOf (a,b) (convertPDDLWorld w)
 checkGoal w (PDDL Rightof a b) = leftOrRightOf (b,a) (convertPDDLWorld w)
         
 
+-- Checks if Id is free
+isFree :: Id -> World -> Bool
+isFree i w = 0 == (snd ( findSAH  i w))
 
+            
 -- If the first ID is above the secound, then return true
 aboveOrUnder :: (Id,Id) -> World -> Bool
 aboveOrUnder (t,u) w = do

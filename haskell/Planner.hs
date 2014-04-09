@@ -38,28 +38,24 @@ talkingBastard ((x,y):[]) w = do
                  let (i,nw) = take' x w
                  let stack =  (w !! y)
                  let finaltext = case stack of
-                        [] -> "On the floor"
+                        [] -> " on the floor"
                         ((PDDL Ontop a b):c) ->  " on the " ++  (amIAlone a (snd (take' y nw)))
-
                  ["Finally I move the " ++ amIAlone i nw ++  finaltext , " pick " ++  show x , "drop " ++ show y]
 talkingBastard ((x,y):ms) w = do
                  let (i,nw) = take' x w
                  let nw'    = drop' y nw i
-                 let (Object s c f) = case  lookup i listOfObjects of 
-                                        Just b -> b
-                                        Nothing -> error "TUSSA"
                  ["I move the " ++ amIAlone i nw , " pick " ++  show x , "drop " ++ show y] ++ talkingBastard ms nw'
 
 -- Case for holding objects and goals when only taking up objects is next.
 solve :: World -> Id -> Id -> [PDDL] -> Plan
 solve world hold holding  ((PDDL t a b):goal)
                           | hold /= "no" = if holding == a && b=="" then [] else ["drop " ++ show holdMove ++ " "] ++ (solve newWorld "no" "-" goal')
-                          | b == ""        = concat [[" pick " ++ show x, "drop " ++ show y] | (x,y)<-allMovesT] ++ [" pick " ++ show (fst $ findSAH a world)]
+                          | b == ""        =  talkingBastard allMovesT (convertWorld world) ++ [" and now I'm holding the " ++ amIAlone a nw," pick " ++ show (fst $ findSAH a world)] --concat [[" pick " ++ show x, "drop " ++ show y] | (x,y)<-allMovesT] ++ [" pick " ++ show (fst $ findSAH a world)]
                           | otherwise      =  talkingBastard allMoves (convertWorld world)-- concat [[" pick " ++ show x, "drop " ++ show y] | (x,y)<-allMoves] 
                                             
     where
         allMoves   = fst $ runDfs goal' world
-        allMovesT  = fst $ runDfs [PDDL t a ""] world
+        (allMovesT,nw)  = runDfs [PDDL t a ""] world
         holdMove   = head $ getObjMoves (getObjId holding) pddlWorld 
         newWorld   = convertPDDLWorld $  drop' holdMove pddlWorld holding 
         pddlWorld  = convertWorld world

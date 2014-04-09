@@ -79,6 +79,7 @@ createPDDL (i1, i2) = [PDDL Ontop (fst (listOfObjects !! i1)) (fst (listOfObject
 
 createPDDL :: (Maybe Object, (Relation, Maybe Object)) -> PDDL
 createPDDL (o1, (r, Nothing)) = PDDL r id1 ""
+    where id1 = fst $ head $ filter ((== o1) . snd) (map (\(id, o) -> (id, Just o)) listOfObjects)
 createPDDL (o1, (r, o2)) = PDDL r id1 id2
   where id1 = fst $ head $ filter ((== o1) . snd) (map (\(id, o) -> (id, Just o)) listOfObjects)
         id2 = fst $ head $ filter ((== o2) . snd) (map (\(id, o) -> (id, Just o)) listOfObjects)

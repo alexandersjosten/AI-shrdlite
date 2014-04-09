@@ -12,13 +12,50 @@ import Data.Maybe
 import HelpFunctions
 
 
+amIAlone :: Id -> PDDLWorld -> String
+amIAlone i w =  if or $ checkForm (Object s c f) objects
+                then 
+                        if or $ checkColor (Object s c f) objects  
+                        then 
+                            if or $ checkSize (Object s c f) objects 
+                            then show s ++ " " ++ show c  ++ " " ++ show f
+                            else show s  ++ " " ++ show f  
+                        else show c ++ " "  ++ show f  
+                            
+                else show f
+            where
+                checkForm _ []                                     = []
+                checkForm (Object s1 c1 f1) ((Object s2 c2 f2):os) = (f1 == f2) : checkForm (Object s1 c1 f1) os
+                checkColor _ []                                     = []
+                checkColor (Object s1 c1 f1) ((Object s2 c2 f2):os) = (f1 == f2 && c1 == c2) : checkColor (Object s1 c1 f1) os
+                checkSize _ []                                     = []
+                checkSize (Object s1 c1 f1) ((Object s2 c2 f2):os) = (f1 == f2 && s1 == s2) : checkSize (Object s1 c1 f1) os
+                (Object s c f)  = getObjId i
+                objects = (convertToObjects w)  
+
+talkingBastard :: [Move] -> PDDLWorld -> Plan
+talkingBastard ((x,y):[]) w = do
+                 let (i,nw) = take' x w
+                 let stack =  (w !! y)
+                 let finaltext = case stack of
+                        [] -> "On the floor"
+                        ((PDDL Ontop a b):c) ->  " on the " ++  (amIAlone a (snd (take' y nw)))
+
+                 ["Finally I move the " ++ amIAlone i nw ++  finaltext , " pick " ++  show x , "drop " ++ show y]
+talkingBastard ((x,y):ms) w = do
+                 let (i,nw) = take' x w
+                 let nw'    = drop' y nw i
+                 let (Object s c f) = case  lookup i listOfObjects of 
+                                        Just b -> b
+                                        Nothing -> error "TUSSA"
+                 ["I move the " ++ amIAlone i nw , " pick " ++  show x , "drop " ++ show y] ++ talkingBastard ms nw'
 
 -- Case for holding objects and goals when only taking up objects is next.
 solve :: World -> Id -> Id -> [PDDL] -> Plan
-solve world hold holding  ((PDDL t a b):goal) 
-                          | hold /= "no" = ["drop " ++ show holdMove ++ " "] ++ (solve newWorld "no" "-" goal')
+solve world hold holding  ((PDDL t a b):goal)
+                          | hold /= "no" = if holding == a && b=="" then [] else ["drop " ++ show holdMove ++ " "] ++ (solve newWorld "no" "-" goal')
                           | b == ""        = concat [[" pick " ++ show x, "drop " ++ show y] | (x,y)<-allMovesT] ++ [" pick " ++ show (fst $ findSAH a world)]
-                          | otherwise      = concat [[" pick " ++ show x, "drop " ++ show y] | (x,y)<-allMoves] 
+                          | otherwise      =  talkingBastard allMoves (convertWorld world)-- concat [[" pick " ++ show x, "drop " ++ show y] | (x,y)<-allMoves] 
                                             
     where
         allMoves   = fst $ runDfs goal' world
@@ -27,7 +64,7 @@ solve world hold holding  ((PDDL t a b):goal)
         newWorld   = convertPDDLWorld $  drop' holdMove pddlWorld holding 
         pddlWorld  = convertWorld world
         goal' = ((PDDL t a b):goal)
-        
+solve world hold holding []  = error "No goal??? Interpreter ..... "    
 -- Breth first search, bad version
 runDfs :: [PDDL] -> World -> ([Move],PDDLWorld)
 runDfs g w = safeHead $ filter (/= ([],[])) [ dfs i ss g wP [] [wP] | i<-[(sDepth)..]]
@@ -58,10 +95,11 @@ bfsStep ss (mvs,w) ws = [k  | i <- (sortMoves ss (getAllMove w)),let k = sim i, 
 -- (minDepth,(smallerStack,BiggerStack))
 findStuff :: World -> PDDL -> (Int,(Int,Int))
 findStuff w (PDDL Inside a b)  = findStuff w (PDDL Ontop a b)
-findStuff w (PDDL Ontop a "")  = do 
+findStuff w (PDDL Ontop a "") = do 
 			let (s1,h1) = findSAH a w
 			(h1,(s1,s1))
 findStuff w (PDDL Ontop a b) 
+        | checkGoal (convertWorld w) (PDDL Ontop a b) = (0,(0,0))
 		| length b > 1 =  do 
 				 let s2      = head . map snd . take 1 . sort $ zip w [0..] -- b is a floor
 				 let h2      = length (w !! s2) -1
@@ -75,15 +113,19 @@ findStuff w (PDDL Ontop a b)
 			getSuff (s1',h1') (s2',h2') 
 				| s1'==s2'  =  if h1'>h2' then (h1'+1,(s2',s1')) else (h2'+1 ,(s1',s2'))
 				| otherwise = if h1'>h2' then (h1'+h2'+1,(s2',s1')) else (h1'+h2'+1,(s1',s2'))
-findStuff w (PDDL Above a b) = do
-		let (s1,h1) = findSAH a w
-		let (s2,_) = findSAH b w
-		(h1+1,(s2,s1)) -- Maybe modify the smaller stack
+findStuff w (PDDL Above a b) 
+        | checkGoal (convertWorld w) (PDDL Above a b) = (0,(0,0))
+        | otherwise = do
+        		let (s1,h1) = findSAH a w
+        		let (s2,_) = findSAH b w
+        		(h1+1,(s2,s1)) -- Maybe modify the smaller stack
 findStuff w (PDDL Under a b) = findStuff w (PDDL Above b a)
-findStuff w (PDDL Leftof a b) = do
-		let (s1,h1) = findSAH a w
-		let (s2,h2) = findSAH b w
-		getSuff (s1,h1) (s2,h2)
+findStuff w (PDDL Leftof a b)  
+        | checkGoal (convertWorld w) (PDDL Leftof a b) = (0,(0,0))
+        | otherwise = do
+        		let (s1,h1) = findSAH a w
+        		let (s2,h2) = findSAH b w
+        		getSuff (s1,h1) (s2,h2)
 	where 
 	getSuff (s1',h1') (s2',h2') 
 		| s1' == s2' = if h1'> h2' then (h2'+1,(s1',s2')) else (h1'+1, (s1',s2'))
@@ -92,7 +134,9 @@ findStuff w (PDDL Leftof a b) = do
 		| s1' < s2' = (0,(0,0))
 		| otherwise = if h1' < h2' then (h1'+1,(s2',s1')) else (h2'+1,(s1',s2'))
 findStuff w (PDDL Rightof a b) = findStuff w (PDDL Leftof b a)
-findStuff w (PDDL Beside a b) = do 
+findStuff w (PDDL Beside a b)  
+        | checkGoal (convertWorld w) (PDDL Beside a b) = (0,(0,0))
+        | otherwise = do
 		let (s1,h1) = findSAH a w
 		let (s2,h2) = findSAH b w
 		getSuff (s1,h1) (s2,h2)

@@ -202,6 +202,9 @@ convertMoveToWorld ((x,y):m) w  = do
                      let nw'    = drop' y nw i
                      convertMoveToWorld m nw'
                      
+convertToObjects :: PDDLWorld -> [Object]
+convertToObjects w = map getObjId $ concat (convertPDDLWorld w)
+                     
 -- http://stackoverflow.com/questions/18118280/finding-maximum-element-in-a-list-of-tuples                    
 maximum' :: Ord t => [(t, a)] -> (t, a)
 maximum' []     = error "maximum of empty list"

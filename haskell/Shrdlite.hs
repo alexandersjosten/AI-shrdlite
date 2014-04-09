@@ -38,7 +38,7 @@ jsonMain jsinput = makeObj result
       plan      = solve world hold holding goals' :: Plan
 
       output    = if null trees then "Parse error!"
-                  else if null goals then "Interpretation error!"
+                  else if null goals' then "Interpretation error!"
                        else if length goals >= 2 then "Ambiguity error!"
                             else if null plan then "Planning error!"
                                  else "Success!"

@@ -27,6 +27,7 @@ jsonMain jsinput = makeObj result
       utterance = ok (valFromObj "utterance" jsinput) :: Utterance
       world     = ok (valFromObj "world"     jsinput) :: World
       holding   = ok (valFromObj "holding"   jsinput) :: Id
+      hold      = ok (valFromObj "hold"      jsinput) :: Id
       objects   = ok (valFromObj "objects"   jsinput) :: Objects
 
       trees     = parse command utterance :: [Command]
@@ -34,7 +35,7 @@ jsonMain jsinput = makeObj result
       goals     = [goal | tree <- trees, goal <- interpret world holding objects tree] :: [Goal]
       goals'     = [goal | tree <- trees, goal <- interpret' tree] :: [PDDL]
 
-      plan      = solve world holding objects goals' :: Plan
+      plan      = solve world hold holding goals' :: Plan
 
       output    = if null trees then "Parse error!"
                   else if null goals then "Interpretation error!"

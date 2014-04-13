@@ -91,6 +91,18 @@ After the ambiguities has been found, the list of  objects that match in either 
 In case of multiple identical objects that matches (i.e. a world with only 10 small white boxes), it would be pointless to ask the user of which one one the user intends. Instead the user is told that there is multiple objects the user could be referring to and an arbitrary instance is picked to move.
 
 \section{Planner}
+The planner receives a single goal either from the interpreter or the ambiguity resolution. The goal can consist of multiple subgoals(PDDL). The planner receives the world as a list of list containing the id's of the block, for example $[[a,b],[],[c],[d,e]]$. First thing the planner does is to convert this world to another representation. The example above would become 
+\begin{verbatim}
+[[ontop a b, ontop b floor]
+,[]
+,[ontop c floor]
+,[ontop d e, ontop e floor]
+]
+\end{verbatim}
+the reason for this representation is that PDDL Ontop a b is the most frequent one to appear in the goal. This will make it easy to check of the goal state is present in the world. Later on we have found this representation might not be the best, we have talked about representing the world as a list of tuples [ontop a b, ontop b floor]  would become [(a,b),(b,floor)]. For now our representation has suffice. After the world has been converted the search algorithm is called.
+
+
+\subsection{Search algorithm}  
 From the beginning we wanted to create a planner that would make as few moves as possible to succeed at it's goal. We ended up creating Breadth first search, with heuristics that gives the algorithm lower bound and a specific node to go down. How does it work?
 
 To find the lower bound we have a very simple cost function, it counts how many blocks are above the blocks that need to be moved to reach goal state. For example, if the goal is to put block a on top of block b, block a has 2 blocks on top of it and block b has 1 block on top of it. Then the lower bound would be (2+1) + 1 = 4. The reason for +1 is because we have to move a on top of b. 
@@ -98,7 +110,6 @@ To find the lower bound we have a very simple cost function, it counts how many 
 To find the specific nodes to start at we sort the possible moves in the world, so we first move blocks in the stacks that are used in the goal, starting in the stack with more blocks above block involved in the goal. For example if we use the example above then we would  start with moves from the stack where block a is, because block a has more blocks on top of it, then we would move from the stack where block b is and then the rest of the moves
 
 With these heuristics the algorithm uses Breadth first search, looking for goal state at the given lower bound first using most likely moves.
-
 \section{Conclusion}
 What have we learned, did we achieve the goals given in the introduction etc.
 

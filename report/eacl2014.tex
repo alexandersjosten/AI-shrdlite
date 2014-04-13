@@ -73,21 +73,20 @@ In situations where the "all" quantifier is used, it becomes more difficult for 
 \end{verbatim}
 because the ambiguity resolution module will see this as an ambiguity and try and resolve it. However, no ambiguity exists, so the interpreter must make sure that situations like this can't be seen as an ambiguity.
 
-\section*{Ambiguity resolution}
+\section{Ambiguity resolution}
 The ambiguity resolver receives a list of goals from the interpreter, and given that a list contains more than one element (goals), it will try to resolve the ambiguity. In case of a single goal from the interpreter we pass it forward to the planner. When an ambiguity is encountered, a clarification question is asked of the user.
 When given a list of goals (each goal consists of subgoals, PDDLs) and a copy of the world (the current state of the stacks and objects), an ambiguity is encountered when there is more than one object that matches either the source or the destination.
 
-\subsubsection*{Types of ambiguity}
-There will reside two types of ambiguity in the given context; either the object the user wants to move is ambiguous, in that it has more than one possible candidate (source) in the current world; or the user wants to move an object to a place (destination) that has more than one possible candidate in the given world. For example the utterance:
-“Move the white ball to the red box”
+\subsection{Types of ambiguity}
+There will reside two types of ambiguity in the given context; either the object the user wants to move is ambiguous, in that it has more than one possible candidate (source) in the current world; or the user wants to move an object to a place (destination) that has more than one possible candidate in the given world. For example the utterance: "Move the white ball to the red box"
 in a world with two white balls (or more) will be matched by the source case, and the same utterance will be matched by the destination case, in a world that contains two red boxes (or more).
 In a world that contains multiple candidates for both source and destination, the ambiguity resolver asks the user to specify which source the user intends to move, and subsequently follows up with a second question regarding the destination.
 Either type of ambiguity will be over shape, color, size and spatial relation.
 
-\subsubsection*{Finding ambiguity}
+\subsection{Finding ambiguity}
 When given multiple goals, the ambiguity resolver looks for objects that match in destination but not in source and or vice versa. Consideration has to be taken in account for shape, size, color and spatial relation to make sure that there is an exact match in two or more objects given the goals. Every match is saved for later presentation to the user in the clarification question.
 
-\subsubsection*{Resolving ambiguity}
+\subsection{Resolving ambiguity}
 After the ambiguities has been found, the list of  objects that match in either destination and or source, together with corresponding source or destination is presented in a list to the user in a clarification question. Here the user is asked to make choices which in turn will be used for a new request to the program.
 In case of multiple identical objects that matches (i.e. a world with only 10 small white boxes), it would be pointless to ask the user of which one one the user intends. Instead the user is told that there is multiple objects the user could be referring to and an arbitrary instance is picked to move.
 

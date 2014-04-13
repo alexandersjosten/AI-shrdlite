@@ -24,7 +24,7 @@
 
 \title{Shrdlite Project Report}
 
-\author{Alexnder Sjosten
+\author{Alexander Sjosten
   \\\And
   Asbjorn Hagalin \\
   \\\And
@@ -36,33 +36,42 @@
 \begin{document}
 \maketitle
 \begin{abstract}
-This document contains the instructions for preparing a camera-ready manuscript for the proceedings of EACL-2014. The document itself conforms to its own specifications, and is therefore an example of what your manuscript should look like. These instructions should be used for both papers submitted for review and for final versions of accepted papers. Authors are asked to conform to all the direction reported in this document.
+Summary of the report. We should write this last.
 \end{abstract}
 
 
-\section*{Introduction}
-what is our main objective
+\section{Introduction}
+What is our main objective?
 
 
-\section*{Background}
- explain shrdlue, what is it and why is it important?
+\section{Background}
+Explain Shrdlue, what is it and why is it important?
 
 
-\section*{Interpretation}
+\section{Interpretation}
 The interpreter will, given a parse tree from the parser, create a list of goals that should be given to the planner. Each goal will be a list of subgoals (a subgoal will be refered to as PDDL from here on out). When interpreting the the given parse tree from the parser, the interpreter module will check its interpretations (i.e. the list of goals) to the given world and rule out the interpretations that are impossible in the current world. If no interpretations are valid in the current world, there will be an interpretation error and if the list of goals contain more than one element there exists an ambiguity and it will be the job of the ambiguity resolution module to resolve the ambiguity.
 
-\subsection*{Interpreting quantifiers}
+\subsection{Interpreting quantifiers}
 There exists three quantifiers, namely "the", "any" and "all" and the design choices of how to interpret each of the quantifiers will vary depending on the context.
 
-\subsubsection*{The "the" quantifier}
+\subsubsection{The "the" quantifier}
 When interpreting the quantifier "the", it will be interpreted as a specific object. Assume you have the sentence "move the white ball to the red box". This sentence makes sence if it is uttered in a world that contains exactly one white ball and one red box. If there exists two or more white balls and/or two or more red boxes, it will be a situation where the ambiguity resolution will have to be called. Assume the utterance given above and a world containing two white balls (call them a and b) and one red box (call it c). The interpreter will in this situation create two goals, one that says a should be on top of c and one that says b should be on top of c.
 
-\subsubsection*{The "any" quantifier}
+\subsubsection{The "any" quantifier}
+If the "any" quantifier is used, it will be interpreted as whichever object that fits the description. If the sentence is "move any white ball to the red box", it will be interpreted as in the case where there are two or more white balls, select whichever of these and move it to the red box. At the moment, the interpreter will simply select the first goal that is valid. However, there are optimizations to be done. The interpreter could check the world and remove goals that are far more difficult to plan. Imagine a world where one white ball is free and another is blocked, it would be most likely be easier to plan if the free ball is selected.
 
-
-\subsubsection*{The "all" quantifier}
-
-
+\subsubsection{The "all" quantifier}
+In situations where the "all" quantifier is used, it becomes more difficult for the interpreter. When generating the goals, the interpreter should not only select the objects in a way that could make it easier for the planner but it must also make sure that no ambiguos goals occurs if there is no need for it. Again, assume a sentence of the form "move all the white balls to a red box" and there are three white balls (call them a, b and c) and three red boxes (call them d, e and f). The interpreter should not give a result of the shape:
+\begin{verbatim}
+[[ontop a d, ontop b e, ontop c f]
+,[ontop a d, ontop b f, ontop c e]
+,[ontop a e, ontop b d, ontop c f]
+,[ontop a e, ontop b f, ontop c d]
+,[ontop a f, ontop b d, ontop c e]
+,[ontop a f, ontop b e, ontop c d]
+]
+\end{verbatim}
+because the ambiguity resolution module will see this as an ambiguity and try and resolve it. However, no ambiguity exists, so the interpreter must make sure that situations like this can't be seen as an ambiguity.
 
 \section*{Ambiguity resolution}
 The ambiguity resolver receives a list of goals from the interpreter, and given that a list contains more than one element (goals), it will try to resolve the ambiguity. In case of a single goal from the interpreter we pass it forward to the planner. When an ambiguity is encountered, a clarification question is asked of the user.
@@ -82,7 +91,7 @@ When given multiple goals, the ambiguity resolver looks for objects that match i
 After the ambiguities has been found, the list of  objects that match in either destination and or source, together with corresponding source or destination is presented in a list to the user in a clarification question. Here the user is asked to make choices which in turn will be used for a new request to the program.
 In case of multiple identical objects that matches (i.e. a world with only 10 small white boxes), it would be pointless to ask the user of which one one the user intends. Instead the user is told that there is multiple objects the user could be referring to and an arbitrary instance is picked to move.
 
-\section*{Planner}
+\section{Planner}
 From the beginning we wanted to create a planner that would make as few moves as possible to succeed at it's goal. We ended up creating Breadth first search, with heuristics that gives the algorithm lower bound and a specific node to go down. How does it work?
 
 To find the lower bound we have a very simple cost function, it counts how many blocks are above the blocks that need to be moved to reach goal state. For example, if the goal is to put block a on top of block b, block a has 2 blocks on top of it and block b has 1 block on top of it. Then the lower bound would be (2+1) + 1 = 4. The reason for +1 is because we have to move a on top of b. 
@@ -91,13 +100,11 @@ To find the specific nodes to start at we sort the possible moves in the world, 
 
 With these heuristics the algorithm uses Breadth first search, looking for goal state at the given lower bound first using most likely moves.
 
-\section*{Conclusion}
- what have we learned, did we achieve the goals given in the introduction etc.
+\section{Conclusion}
+What have we learned, did we achieve the goals given in the introduction etc.
 
-\section*{Acknowledgments}
-
-Do not number the acknowledgment section. Do not include this section
-when submitting your paper for review.
+\section{Acknowledgments}
+Probably not necessary for this report?
 
 % If you use BibTeX with a bib file named eacl2014.bib, 
 % you should add the following two lines:
@@ -106,39 +113,5 @@ when submitting your paper for review.
 
 \section*{Appendix}
 What have each individual done.
-% Otherwise you can include your references as follows:
-%% \begin{thebibliography}{}
-
-%% \bibitem[\protect\citename{Aho and Ullman}1972]{Aho:72}
-%% Alfred~V. Aho and Jeffrey~D. Ullman.
-%% \newblock 1972.
-%% \newblock {\em The Theory of Parsing, Translation and Compiling}, volume~1.
-%% \newblock Prentice-{Hall}, Englewood Cliffs, NJ.
-
-%% \bibitem[\protect\citename{{American Psychological Association}}1983]{APA:83}
-%% {American Psychological Association}.
-%% \newblock 1983.
-%% \newblock {\em Publications Manual}.
-%% \newblock American Psychological Association, Washington, DC.
-
-%% \bibitem[\protect\citename{{Association for Computing Machinery}}1983]{ACM:83}
-%% {Association for Computing Machinery}.
-%% \newblock 1983.
-%% \newblock {\em Computing Reviews}, 24(11):503--512.
-
-%% \bibitem[\protect\citename{Chandra \bgroup et al.\egroup }1981]{Chandra:81}
-%% Ashok~K. Chandra, Dexter~C. Kozen, and Larry~J. Stockmeyer.
-%% \newblock 1981.
-%% \newblock Alternation.
-%% \newblock {\em Journal of the Association for Computing Machinery},
-%%   28(1):114--133.
-
-%% \bibitem[\protect\citename{Gusfield}1997]{Gusfield:97}
-%% Dan Gusfield.
-%% \newblock 1997.
-%% \newblock {\em Algorithms on Strings, Trees and Sequences}.
-%% \newblock Cambridge University Press, Cambridge, UK.
-
-%% \end{thebibliography}
 
 \end{document}

@@ -58,10 +58,12 @@ There exists three quantifiers, namely "the", "any" and "all" and the design cho
 When interpreting the quantifier "the", it will be interpreted as a specific object. Assume you have the sentence "move the white ball to the red box". This sentence makes sence if it is uttered in a world that contains exactly one white ball and one red box. If there exists two or more white balls and/or two or more red boxes, it will be a situation where the ambiguity resolution will have to be called. Assume the utterance given above and a world containing two white balls (call them a and b) and one red box (call it c). The interpreter will in this situation create two goals, one that says a should be on top of c and one that says b should be on top of c.
 
 \subsubsection*{The "any" quantifier}
-
+If the "any" quantifier is used, it will be interpreted as whichever object that fits the description. If the sentence is "move any white ball to the red box", it will be interpreted as in the case where there are two or more white balls, select whichever of these and move it to the red box. At the moment, the interpreter will simply select the first goal that is valid. However, there are optimizations to be done. The interpreter could check the world and remove goals that are far more difficult to plan. Imagine a world where one white ball is free and another is blocked, it would be most likely be easier to plan if the free ball is selected.
 
 \subsubsection*{The "all" quantifier}
-
+In situations where the "all" quantifier is used, it becomes more difficult for the interpreter. When generating the goals, the interpreter should not only select the objects in a way that could make it easier for the planner but it must also make sure that no ambiguos goals occurs if there is no need for it. Again, assume a sentence of the form "move all the white balls to a red box" and there are three white balls (call them a, b and c) and three red boxes (call them d, e and f). The interpreter should not give a result of the shape:
+\newline
+[[ontop a d, ontop b e, ontop c f], [ontop a d, ontop b f, ontop c e], [ontop a e, ontop b d, ontop c f], [ontop a e, ontop b f, ontop c d], [ontop a f, ontop b d, ontop c e], [ontop a f, ontop b e, ontop c d]]
 
 
 \section*{Ambiguity resolution}

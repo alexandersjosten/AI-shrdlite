@@ -64,6 +64,8 @@ If the "any" quantifier is used, it will be interpreted as whichever object that
 In situations where the "all" quantifier is used, it becomes more difficult for the interpreter. When generating the goals, the interpreter should not only select the objects in a way that could make it easier for the planner but it must also make sure that no ambiguos goals occurs if there is no need for it. Again, assume a sentence of the form "move all the white balls to a red box" and there are three white balls (call them a, b and c) and three red boxes (call them d, e and f). The interpreter should not give a result of the shape:
 \newline
 [[ontop a d, ontop b e, ontop c f], [ontop a d, ontop b f, ontop c e], [ontop a e, ontop b d, ontop c f], [ontop a e, ontop b f, ontop c d], [ontop a f, ontop b d, ontop c e], [ontop a f, ontop b e, ontop c d]]
+\newline
+because the ambiguity resolution module will see this as an ambiguity and try and resolve it. However, no ambiguity exists, so the interpreter must make sure that situations like this can't be seen as an ambiguity.
 
 
 \section*{Ambiguity resolution}

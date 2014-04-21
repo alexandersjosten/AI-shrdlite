@@ -7,6 +7,7 @@ import Text.JSON.Types
 import Data.List (elemIndex)
 --import Text.Groom
 import Data.Maybe
+import Data.List
 
 import HelpFunctions hiding (Floor, Box, Ball)
 
@@ -20,6 +21,61 @@ import HelpFunctions hiding (Floor, Box, Ball)
 -}
 interpret :: World -> Id -> Objects -> Command -> [Goal]
 interpret world holding objects tree = [True] --error $ show world ++ "\n" ++ show objects ++ "\n" ++ show tree
+-- Create lookup table
+createTable :: Objects -> [(Id, Object)]
+createTable os = error $ show $ createTable' (ids `zip` os')
+  where a   = fromJSObject os
+        ids = map fst a
+        os' = map encode $ map snd a
+
+createTable' :: [(Id, String)] -> [(Id, Object)]
+createTable' []           = []
+createTable' ((id, s):xs) =
+  (id, Object (getSize s) (getColor s) (getForm s)) : createTable' xs
+
+-- Sizes: Small | Large
+getSize :: String -> Size
+getSize s = if "small" `isInfixOf` s then
+              Small
+             else
+              Large
+-- Colors: Black | White | Blue | Green | Yellow | Red
+getColor :: String -> Color
+getColor s = if "black" `isInfixOf` s then
+               Black
+             else
+               if "white" `isInfixOf` s then
+                 White
+               else
+                 if "blue" `isInfixOf` s then
+                   Blue
+                 else
+                   if "green" `isInfixOf` s then
+                     Green
+                   else
+                     if "yellow" `isInfixOf` s then
+                       Yellow
+                     else
+                       Red
+
+-- Forms: Brick | Plank | Ball | Pyramid | Box | Table
+getForm :: String -> Form
+getForm s = if "brick" `isInfixOf` s then
+              Brick
+            else
+              if "plank" `isInfixOf` s then
+                Plank
+              else
+                if "ball" `isInfixOf` s then
+                  Ball
+                else
+                  if "pyramid" `isInfixOf` s then
+                    Pyramid
+                  else
+                    if "box" `isInfixOf` s then
+                      Box
+                    else
+                      Table
 
 interpret' :: Command -> [PDDL]
 interpret' tree = map createPDDL (translateCommand tree)

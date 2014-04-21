@@ -1,4 +1,7 @@
-module Interpreter where
+module Interpreter (
+  -- Only export needed functions, rest are help functions
+  interpret, interpret'
+) where
 
 import ShrdliteGrammar
 import CombinatorParser

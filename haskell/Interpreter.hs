@@ -14,6 +14,30 @@ import Data.List
 
 import HelpFunctions hiding (Floor, Box, Ball)
 
+-- Colors: Black | White | Blue | Green | Yellow | Red
+colorTable :: [(String, Color)]
+colorTable = [ ("black", Black)
+             , ("white", White)
+             , ("blue", Blue)
+             , ("green", Green)
+             , ("yellow", Yellow)
+             , ("red", Red)
+             ]
+
+-- Sizes: Small | Large
+sizeTable :: [(String, Size)]
+sizeTable = [("small", Small), ("large", Large)]
+
+-- Forms: Brick | Plank | Ball | Pyramid | Box | Table
+formTable :: [(String, Form)]
+formTable = [ ("brick", Brick)
+            , ("plank", Plank)
+            , ("ball", Ball)
+            , ("pyramid", Pyramid)
+            , ("box", Box)
+            , ("table", Table)
+            ]
+
 {-
   Nasty way, lookup table way better! :)
   a = fromJSObject objects :: [(String, JSValue)]

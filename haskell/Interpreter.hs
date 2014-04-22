@@ -25,6 +25,9 @@ import HelpFunctions hiding (Floor, Box, Ball)
 interpret :: World -> Id -> Objects -> Command -> [Goal]
 interpret world holding objects tree = [True] --error $ show world ++ "\n" ++ show objects ++ "\n" ++ show tree
 -- Create lookup table
+--------------------------------------------------------------------------------
+--------------------------------- Lookup table ---------------------------------
+--------------------------------------------------------------------------------
 createTable :: Objects -> [(Id, Object)]
 createTable os = error $ show $ createTable' (ids `zip` os')
   where a   = fromJSObject os
@@ -34,54 +37,21 @@ createTable os = error $ show $ createTable' (ids `zip` os')
 createTable' :: [(Id, String)] -> [(Id, Object)]
 createTable' []           = []
 createTable' ((id, s):xs) =
-  (id, Object (getSize s) (getColor s) (getForm s)) : createTable' xs
-
--- Sizes: Small | Large
-getSize :: String -> Size
-getSize s = if "small" `isInfixOf` s then
-              Small
-             else
-              Large
--- Colors: Black | White | Blue | Green | Yellow | Red
-getColor :: String -> Color
-getColor s = if "black" `isInfixOf` s then
-               Black
-             else
-               if "white" `isInfixOf` s then
-                 White
-               else
-                 if "blue" `isInfixOf` s then
-                   Blue
-                 else
-                   if "green" `isInfixOf` s then
-                     Green
-                   else
-                     if "yellow" `isInfixOf` s then
-                       Yellow
-                     else
-                       Red
-
--- Forms: Brick | Plank | Ball | Pyramid | Box | Table
-getForm :: String -> Form
-getForm s = if "brick" `isInfixOf` s then
-              Brick
-            else
-              if "plank" `isInfixOf` s then
-                Plank
-              else
-                if "ball" `isInfixOf` s then
-                  Ball
-                else
-                  if "pyramid" `isInfixOf` s then
-                    Pyramid
-                  else
-                    if "box" `isInfixOf` s then
-                      Box
-                    else
-                      Table
+  (id, Object getSize getColor getForm) : createTable' xs
+  where getSize  = findStuff sizeTable  s
+        getColor = findStuff colorTable s
+        getForm  = findStuff formTable  s
 
 interpret' :: Command -> [PDDL]
 interpret' tree = map createPDDL (translateCommand tree)
+-- We should always find something..
+findStuff :: [(String, a)] -> String -> a
+findStuff [] s = error $ "Couldn't match the string " ++ show s ++ " to something"
+findStuff ((id, obj):xs) s
+  | id `isInfixOf` s = obj
+  | otherwise        = findStuff xs s
+
+--------------------------------------------------------------------------------
 
 -- Will use Maybe in order to make it easier
 translateCommand :: Command -> [(Maybe Object, (Relation, Maybe Object))]

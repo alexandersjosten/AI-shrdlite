@@ -77,6 +77,16 @@ findStuff ((id, obj):xs) s
 
 --------------------------------------------------------------------------------
 
+{-
+World :: [[Id]]
+Id :: String
+(Int, Int) is which list and position in the list that the given Id is in
+-}
+getIndices :: World -> Id -> Int -> (Int, Int)
+getIndices [] id _ = error $ "Can't find the element with id " ++ show id
+getIndices (ids:idss) id x
+  | id `elem` ids = (x, fromJust (elemIndex id ids))
+  | otherwise     = getIndices idss id (x + 1)
 -- Will use Maybe in order to make it easier
 translateCommand :: Command -> [(Maybe Object, (Relation, Maybe Object))]
 translateCommand cmd =

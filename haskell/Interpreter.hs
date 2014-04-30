@@ -77,6 +77,62 @@ findStuff ((id, obj):xs) s
 
 --------------------------------------------------------------------------------
 
+translateCommand :: Command -> [(Id, Object)] -> [(IntObj, Relation, IntObj)]
+translateCommand cmd objects =
+  case cmd of
+    Move Floor _ -> error "Can't move the floor!"
+    Move e     l -> createTriple (getEntities e objects) (getLocations l objects)
+    Take Floor   -> error "Can't take the floor!"
+    Take e       -> createTriple (getEntities e objects) [(Ontop, IFloor)]
+    Put        l -> createTriple [IFloor] (getLocations l objects)
+
+-- RelativeEntity Quantifier Object Location
+-- Special handling if we have Any quantifier, otherwise do same thing
+getEntities :: Entity -> [(Id, Object)] -> [IntObj]
+getEntities Floor _                   = [IFloor]
+getEntities (BasicEntity q o) objects =
+  case q of
+    Any ->
+      case translateObject o objects of
+        []     -> error $ "Can't find any object matching " ++ show o
+        (x:xs) -> [x]
+    _   -> translateObject o objects
+getEntities (RelativeEntity q o l) objects =
+  case q of
+    The -> translateObject o objects
+    Any ->
+      case translateObject o objects of
+        [] -> error $ "Can't find any object matching " ++ show o
+        (x:xs) -> [x]
+    All -> translateObject o objects
+-- Move (RelativeEntity The (Object AnySize White Ball) (Relative Inside (BasicEntity Any (Object AnySize AnyColor Box))))
+--      (Relative Ontop Floor)
+-- Relative Relation Entity
+getLocations :: Location -> [(Id, Object)] -> [(Relation, IntObj)]
+getLocations (Relative r e) objects = [(r, e')| e' <- getEntities e objects]
+
+createTriple :: [IntObj] -> [(Relation, IntObj)] -> [(IntObj, Relation, IntObj)]
+createTriple xs ys = [(o1, r, o2) | o1 <- xs, (r, o2) <- ys]
+
+translateObject :: Object -> [(Id, Object)] -> [IntObj]
+translateObject (Object AnySize AnyColor f) =
+  map Simply . filter (\(Object _  _  f') -> f == f') . map snd
+translateObject (Object AnySize c        f) =
+  map Simply . filter (\(Object _  c' f') -> c == c' && f == f') . map snd
+translateObject (Object s       AnyColor f) =
+  map Simply . filter (\(Object s' _  f') -> s == s' && f == f') . map snd
+translateObject (Object AnySize c        AnyForm) =
+  map Simply . filter (\(Object _ c' _) -> c == c') . map snd
+translateObject (Object s       c        f)
+  = map Simply . filter (\(Object s' c' f') -> s == s' && c == c' && f == f') . map snd
+
+createPDDL :: [(Id, Object)] -> (IntObj, Relation, IntObj) -> PDDL
+createPDDL objects ((Simply o1), r, IFloor) = PDDL r id1 ""
+    where id1 = fst $ head $ filter ((== o1) . snd) objects
+createPDDL objects ((Simply o1), r, (Simply o2)) = PDDL r id1 id2
+  where id1 = fst $ head $ filter ((== o1) . snd) objects
+        id2 = fst $ head $ filter ((== o2) . snd) objects
+createPDDL objects (IFloor, _, _) = error "panic! the impossible happened!"
 {-
 World :: [[Id]]
 Id :: String

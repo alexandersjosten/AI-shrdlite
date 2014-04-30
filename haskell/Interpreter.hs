@@ -14,6 +14,26 @@ import Data.List
 
 import HelpFunctions hiding (Floor, Box, Ball)
 
+
+-- For testing only!!
+exampleTable :: [(Id, Object)]
+exampleTable = [ ("a", Object Large Green Brick)
+               , ("b", Object Small White Brick)
+               , ("c", Object Large Red Plank)
+               , ("d", Object Small Green Plank)
+               , ("e", Object Large White Ball)
+               , ("f", Object Small Black Ball)
+               , ("g", Object Large Blue Table)
+               , ("h", Object Small Red Table)
+               , ("i", Object Large Yellow Pyramid)
+               , ("j", Object Small Red Pyramid)
+               , ("k", Object Large Yellow Box)
+               , ("l", Object Large Red Box)
+               , ("m", Object Small Blue Box)
+               ]
+
+exampleWorld :: World
+exampleWorld = [["g", "c", "a"], ["b", "d", "f"], ["e"]]
 -- Internal representation of the given data, either an Object or the floor
 data IntObj = Simply Object | IFloor
             deriving Show

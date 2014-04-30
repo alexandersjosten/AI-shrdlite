@@ -38,23 +38,19 @@ jsonMain jsinput = makeObj result
 
       trees     = parse command utterance :: [Command]
 
-      goals     = [goal | tree <- trees, goal <- interpret world holding objects tree] :: [Goal]
-      goals'     = [goal | tree <- trees, goal <- interpret' tree] :: [PDDL]
-      
-      
-      
+      goals     = [goal | tree <- trees, goal <- interpret world holding objects tree] :: [PDDL]
 
-      plan      = solve world hold holding goals' :: Plan
+      plan      = solve world hold holding goals :: Plan
 
       output    = if null trees then "Parse error!"
-                  else if null goals' then "Interpretation error!"
+                  else if null goals then "Interpretation error!"
                        else if length goals >= 2 then "Ambiguity error!"
                             else if null plan then "Planning error!"
                                  else "Success!"
 
       result    = [("utterance", showJSON utterance),
                    ("trees",     showJSON (map show trees)),
-                   ("goals",     if length trees >= 1 then showJSON (map show goals') else JSNull),
+                   ("goals",     if length trees >= 1 then showJSON (map show goals) else JSNull),
                    ("plan",      if length goals == 1 then showJSON plan  else JSNull),
                    ("output",    showJSON output)
                   ]

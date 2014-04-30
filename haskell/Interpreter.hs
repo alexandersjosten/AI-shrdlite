@@ -41,7 +41,13 @@ formTable = [ ("brick", Brick)
 interpret :: World -> Id -> Objects -> Command -> [PDDL]
 interpret world holding objects tree =
   map (createPDDL os) $ translateCommand tree os
-    where os = createTable objects
+    where table = createTable objects
+          os    = filterWorld world table
+
+-- Filters all the objects from the JSON-part that doesn't exist in the world
+filterWorld :: World -> [(Id, Object)] -> [(Id, Object)]
+filterWorld world mapping = filter ((`elem` flatWorld) . fst) mapping
+  where flatWorld = concat world
 --------------------------------------------------------------------------------
 --------------------------------- Lookup table ---------------------------------
 --------------------------------------------------------------------------------

@@ -14,6 +14,9 @@ import Data.List
 
 import HelpFunctions hiding (Floor, Box, Ball)
 
+-- Internal representation of the given data, either an Object or the floor
+data IntObj = Simply Object | IFloor
+            deriving Show
 -- Colors: Black | White | Blue | Green | Yellow | Red
 colorTable :: [(String, Color)]
 colorTable = [ ("black", Black)
@@ -52,7 +55,7 @@ filterWorld world mapping = filter ((`elem` flatWorld) . fst) mapping
 --------------------------------- Lookup table ---------------------------------
 --------------------------------------------------------------------------------
 createTable :: Objects -> [(Id, Object)]
-createTable os = error $ show $ createTable' (ids `zip` os')
+createTable os = createTable' (ids `zip` os')
   where a   = fromJSObject os
         ids = map fst a
         os' = map encode $ map snd a

@@ -1,6 +1,6 @@
 module Interpreter (
   -- Only export needed functions, rest are help functions
-  interpret, interpret'
+  interpret
 ) where
 
 import ShrdliteGrammar
@@ -38,17 +38,10 @@ formTable = [ ("brick", Brick)
             , ("table", Table)
             ]
 
-{-
-  Nasty way, lookup table way better! :)
-  a = fromJSObject objects :: [(String, JSValue)]
-  b = map snd a            :: [JSValue]
-  c = map encode b         :: [String]
-  Use Command to build a JSON string and then do:
-  map (isInfixOf cmd) c    :: [Bool]
--}
-interpret :: World -> Id -> Objects -> Command -> [Goal]
-interpret world holding objects tree = [True] --error $ show world ++ "\n" ++ show objects ++ "\n" ++ show tree
--- Create lookup table
+interpret :: World -> Id -> Objects -> Command -> [PDDL]
+interpret world holding objects tree =
+  map (createPDDL os) $ translateCommand tree os
+    where os = createTable objects
 --------------------------------------------------------------------------------
 --------------------------------- Lookup table ---------------------------------
 --------------------------------------------------------------------------------
@@ -66,8 +59,6 @@ createTable' ((id, s):xs) =
         getColor = findStuff colorTable s
         getForm  = findStuff formTable  s
 
-interpret' :: Command -> [PDDL]
-interpret' tree = map createPDDL (translateCommand tree)
 -- We should always find something..
 findStuff :: [(String, a)] -> String -> a
 findStuff [] s = error $ "Couldn't match the string " ++ show s ++ " to something"

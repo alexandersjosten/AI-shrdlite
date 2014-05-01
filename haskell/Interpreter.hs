@@ -8,10 +8,7 @@ import CombinatorParser
 import Text.JSON
 import Text.JSON.Types
 import Data.List (elemIndex)
---import Text.Groom
-import Data.Maybe
 import Data.List
-
 import HelpFunctions hiding (Floor, Box, Ball)
 
 

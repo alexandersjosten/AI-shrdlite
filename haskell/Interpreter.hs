@@ -131,6 +131,52 @@ getLocations (Relative r e) objects = [(r, e')| e' <- getEntities e objects]
 createTriple :: [Maybe Object] -> [(Relation, Maybe Object)] -> [(Maybe Object, Relation, Maybe Object)]
 createTriple xs ys = [(o1, r, o2) | o1 <- xs, (r, o2) <- ys]
 
+{-
+  Filters away everything that's not valid in the world, i.e.
+  check the relation and remove every triple that is not valid (called from getEntities?)
+  CHANGE SIGNATURE!
+  Beside | Leftof | Rightof | Above | Ontop | Under | Inside
+-}
+filterObjects :: World -> [(Id, Object)] -> [(Maybe Object, Relation, Maybe Object)] -> [(Maybe Object, Relation, Maybe Object)]
+filterObjects w objects []             = []
+filterObjects w objects ((o1,r,o2):xs) =
+  case r of
+    Beside  -> if i1 /= i2 then
+                 (o1, r, o2) : filterObjects w objects xs
+               else
+                 filterObjects w objects xs
+    Leftof  -> if i1 < i2 then
+                 (o1, r, o2) : filterObjects w objects xs
+               else
+                 filterObjects w objects xs
+    Rightof -> if i1 > i2 then
+                 (o1, r, o2) : filterObjects w objects xs
+               else
+                 filterObjects w objects xs
+    Above   -> if (i1 == i2 && i1' < i2') then
+                 (o1, r, o2) : filterObjects w objects xs
+               else
+                 filterObjects w objects xs
+    Ontop   -> if (i1 == i2 && i1' == (i2' - 1)) then
+                 (o1, r, o2) : filterObjects w objects xs
+               else
+                 filterObjects w objects xs
+    Under   -> if (i1 == i2 && i1' > i2') then
+                 (o1, r, o2) : filterObjects w objects xs
+               else
+                 filterObjects w objects xs
+    Inside  -> undefined
+  where (i1, i1') = getIndices w o1' 0
+        (i2, i2') = getIndices w o2' 0
+        o1'       =
+          case o1 of
+            Just o  -> fst $ head $ filter ((== o) . snd) objects
+            Nothing -> ""
+        o2'       =
+          case o2 of
+            Just o  -> fst $ head $ filter ((== o) . snd) objects
+            Nothing -> ""
+            
 translateObject :: Object -> [(Id, Object)] -> [Maybe Object]
 translateObject (Object AnySize AnyColor AnyForm) = map Just . map snd
 translateObject (Object AnySize AnyColor f) =

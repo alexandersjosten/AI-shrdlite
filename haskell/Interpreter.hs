@@ -9,8 +9,8 @@ import Text.JSON
 import Text.JSON.Types
 import Data.List (elemIndex)
 import Data.List
-import HelpFunctions hiding (Floor, Box, Ball)
-
+import Data.Maybe
+import HelpFunctions
 
 -- For testing only!!
 exampleTable :: [(Id, Object)]
@@ -94,19 +94,19 @@ findStuff ((id, obj):xs) s
 
 --------------------------------------------------------------------------------
 
-translateCommand :: Command -> [(Id, Object)] -> [(IntObj, Relation, IntObj)]
+translateCommand :: Command -> [(Id, Object)] -> [(Maybe Object, Relation, Maybe Object)]
 translateCommand cmd objects =
   case cmd of
     Move Floor _ -> error "Can't move the floor!"
     Move e     l -> createTriple (getEntities e objects) (getLocations l objects)
     Take Floor   -> error "Can't take the floor!"
-    Take e       -> createTriple (getEntities e objects) [(Ontop, IFloor)]
-    Put        l -> createTriple [IFloor] (getLocations l objects)
+    Take e       -> createTriple (getEntities e objects) [(Ontop, Nothing)]
+    Put        l -> createTriple [Nothing] (getLocations l objects)
 
 -- RelativeEntity Quantifier Object Location
 -- Special handling if we have Any quantifier, otherwise do same thing
-getEntities :: Entity -> [(Id, Object)] -> [IntObj]
-getEntities Floor _                   = [IFloor]
+getEntities :: Entity -> [(Id, Object)] -> [Maybe Object]
+getEntities Floor _                   = [Nothing]
 getEntities (BasicEntity q o) objects =
   case q of
     Any ->
@@ -125,31 +125,45 @@ getEntities (RelativeEntity q o l) objects =
 -- Move (RelativeEntity The (Object AnySize White Ball) (Relative Inside (BasicEntity Any (Object AnySize AnyColor Box))))
 --      (Relative Ontop Floor)
 -- Relative Relation Entity
-getLocations :: Location -> [(Id, Object)] -> [(Relation, IntObj)]
+getLocations :: Location -> [(Id, Object)] -> [(Relation, Maybe Object)]
 getLocations (Relative r e) objects = [(r, e')| e' <- getEntities e objects]
 
-createTriple :: [IntObj] -> [(Relation, IntObj)] -> [(IntObj, Relation, IntObj)]
+createTriple :: [Maybe Object] -> [(Relation, Maybe Object)] -> [(Maybe Object, Relation, Maybe Object)]
 createTriple xs ys = [(o1, r, o2) | o1 <- xs, (r, o2) <- ys]
 
-translateObject :: Object -> [(Id, Object)] -> [IntObj]
+translateObject :: Object -> [(Id, Object)] -> [Maybe Object]
+translateObject (Object AnySize AnyColor AnyForm) = map Just . map snd
 translateObject (Object AnySize AnyColor f) =
-  map Simply . filter (\(Object _  _  f') -> f == f') . map snd
-translateObject (Object AnySize c        f) =
-  map Simply . filter (\(Object _  c' f') -> c == c' && f == f') . map snd
-translateObject (Object s       AnyColor f) =
-  map Simply . filter (\(Object s' _  f') -> s == s' && f == f') . map snd
+  map Just . filter (\(Object _  _  f') -> f == f') . map snd
 translateObject (Object AnySize c        AnyForm) =
-  map Simply . filter (\(Object _ c' _) -> c == c') . map snd
-translateObject (Object s       c        f)
-  = map Simply . filter (\(Object s' c' f') -> s == s' && c == c' && f == f') . map snd
+  map Just . filter (\(Object _ c' _) -> c == c') . map snd
+translateObject (Object s       AnyColor AnyForm) =
+  map Just . filter (\(Object s' _ _) -> s == s') . map snd
+translateObject (Object AnySize c        f) =
+  map Just . filter (\(Object _  c' f') -> c == c' && f == f') . map snd
+translateObject (Object s       AnyColor f) =
+  map Just . filter (\(Object s' _  f') -> s == s' && f == f') . map snd
+translateObject (Object s       c        AnyForm) =
+  map Just . filter (\(Object s' c' _) -> s == s' && c == c') . map snd
+translateObject (Object s       c        f) =
+  map Just . filter (\(Object s' c' f') -> s == s' && c == c' && f == f') . map snd
 
-createPDDL :: [(Id, Object)] -> (IntObj, Relation, IntObj) -> PDDL
-createPDDL objects ((Simply o1), r, IFloor) = PDDL r id1 ""
+createPDDL :: [(Id, Object)] -> (Maybe Object, Relation, Maybe Object) -> PDDL
+createPDDL objects ((Just o1), _, Nothing)   = PDDL Ontop id1 ""
     where id1 = fst $ head $ filter ((== o1) . snd) objects
-createPDDL objects ((Simply o1), r, (Simply o2)) = PDDL r id1 id2
+createPDDL objects ((Just o1), r, (Just o2)) = PDDL r id1 id2
   where id1 = fst $ head $ filter ((== o1) . snd) objects
         id2 = fst $ head $ filter ((== o2) . snd) objects
-createPDDL objects (IFloor, _, _) = error "panic! the impossible happened!"
+createPDDL objects (Nothing, _, _)           = error "panic! the impossible happened!"
+
+legalMove :: (Maybe Object, Relation, Maybe Object) -> Bool
+legalMove (Nothing, _, _)       = False
+legalMove (Just o1, _, Just o2) = okMove o1 o2
+legalMove (Just o1, r, Nothing) =
+  case r of
+    Ontop -> True
+    _     -> False
+
 {-
 World :: [[Id]]
 Id :: String

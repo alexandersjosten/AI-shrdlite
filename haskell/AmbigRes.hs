@@ -59,4 +59,4 @@ findAllSrcDups (PDDL rel src dst) (x:xs) =
       else Just (Ambiguity True dst ys)
 
 buildChoices :: Ambiguity -> String
-buildChoices _ = "Hello!"
+buildChoices _ = "TODO!"

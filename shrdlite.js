@@ -437,6 +437,7 @@ function userInput() {
                     'holding': currentWorld.holding,
                     'hold': currentWorld.hold,
                     'state': currentWorld.state,
+		    'amb' : currentWorld.amb,
                     'utterance': userinput.split(/\s+/)
                    };
 

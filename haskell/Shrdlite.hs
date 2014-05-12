@@ -33,23 +33,28 @@ jsonMain jsinput =
     Right b -> makeObj clarResult
     where
       (wasAmbig, ambList, theChoices) =
-        case resolveAmbig [goals,goals] of
+        case resolveAmbig goals of
           Right _ -> (False, [],"")
           Left x  -> (True, (map show goals), buildChoices x)
       utterance = ok (valFromObj "utterance" jsinput) :: Utterance
       world     = ok (valFromObj "world"     jsinput) :: World
-      holding   = ok (valFromObj "holding"   jsinput) :: Id
+      holding   = case valFromObj "holding" jsinput of
+        Ok id   -> id
+        Error _ -> ""
       hold      = ok (valFromObj "hold"      jsinput) :: Id
       objects   = ok (valFromObj "objects"   jsinput) :: Objects
       amb       = resultToEither (valFromObj "amb" jsinput) :: Either String [String]
 
       trees     = parse command utterance :: [Command]
 
-      goals     = [goal | tree <- trees, goal <- interpret world holding objects tree] :: [PDDL]
+      goals     = [goal | tree <- trees, goal <- interpret world holding objects tree] :: [[PDDL]]
       
       --noAmbig   = isAmbiguousW goals :: [PDDL]
 
-      plan      = solve world hold holding goals :: Plan
+      plan      =
+        case goals of
+             []     -> error "Fucking interpreter couldn't find a goal!"
+             (g:gs) -> solve world hold holding g :: Plan
 
       output     = if null trees then "Parse error!"
                   else if null goals then "Interpretation error!"

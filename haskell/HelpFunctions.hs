@@ -18,12 +18,11 @@ type Move = (Int,Int) -- (Pick int, Drop int)
 
 -- First, divide the features that describe the world into primitive 
 -- and derived features. Definite clauses are 
-data PDDL = PDDL Relation Id Id 
-
+data PDDL = PDDL Relation Id Id
 
 -- With this Eq, we can check if a PDDLworld == PDDLworld
 instance Eq PDDL where
-    (PDDL Ontop n11 n12) == (PDDL Ontop n21 n22) = n11 == n21 && n12 == n22
+    (PDDL _ n11 n12) == (PDDL _ n21 n22) = n11 == n21 && n12 == n22
 --(ontop a b), (ontop b floor-n)
 
 
@@ -88,6 +87,7 @@ okMove (Object s1 _ Ball)      (Object s2 _ AnyForm)    = True     -- Balls must
 okMove (Object s1 _ Ball)      (Object s2 _ Box)        = s1 <= s2 -- Balls must be in a box,     otherwise they roll away. 
 okMove (Object s1 _ Ball)      (Object s2 _ Table)      = False    -- Balls must be in a box,     otherwise they roll away.
 okMove (Object s1 _ Ball)      (Object s2 _ Brick)      = False    -- Balls must be in a box,     otherwise they roll away.
+okMove (Object s1 _ Box)       (Object s2 _ Box)        = s1 < s2
 okMove (Object s1 _ _)         (Object s2 _  _)         = s1 <= s2 -- Small objects cannot support large objects.
 
 {-

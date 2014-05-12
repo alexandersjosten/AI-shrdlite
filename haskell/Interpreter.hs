@@ -29,11 +29,12 @@ exampleTable = [ ("a", Object Large Green Brick)
                , ("m", Object Small Blue Box)
                ]
 
-exampleWorld :: World
-exampleWorld = [["g", "c", "a"], ["b", "d", "f"], ["e"]]
--- Internal representation of the given data, either an Object or the floor
-data IntObj = Simply Object | IFloor
-            deriving Show
+complexWorld :: World
+complexWorld = [["e"], ["l", "a"], ["j", "h", "i"], ["b", "g", "k", "c"], ["f", "m", "d"]]
+
+smallWorld :: World
+smallWorld = [["e"], ["l", "g"], [], ["f", "m", "k"], []]
+
 -- Colors: Black | White | Blue | Green | Yellow | Red
 colorTable :: [(String, Color)]
 colorTable = [ ("black", Black)
@@ -58,12 +59,29 @@ formTable = [ ("brick", Brick)
             , ("table", Table)
             ]
 
-interpret :: World -> Id -> Objects -> Command -> [PDDL]
+testInterpret :: World -> Id -> [(Id, Object)] -> Command -> [[PDDL]]
+testInterpret world holding objects cmd =
+  case holding of
+    "" -> nub $ createPDDL $ translateCmd cmd os world holding
+    id -> nub $ createPDDL $ translateCmd cmd adding world holding
+    where os    = filterWorld world objects
+          adding = ((filter ((== holding) . fst) objects) ++ os)
+
+createPDDL :: [[(Id, Relation, Id)]] -> [[PDDL]]
+createPDDL xs = map createPDDL' xs
+  where createPDDL' :: [(Id, Relation, Id)] -> [PDDL]
+        createPDDL' [] = []
+        createPDDL' ((id1, r, id2):pddls) = PDDL r id1 id2 : createPDDL' pddls
+
+interpret :: World -> Id -> Objects -> Command -> [[PDDL]]
 interpret world holding objects tree =
-  map (createPDDL os) $ translateCommand tree os
+  case holding of
+    "" -> nub $ createPDDL $ translateCmd tree os world holding
+    id -> nub $ createPDDL $ translateCmd tree adding world holding
     where table = createTable objects
           os    = filterWorld world table
-
+          adding = ((filter ((== holding) . fst) table) ++ os)
+          
 -- Filters all the objects from the JSON-part that doesn't exist in the world
 filterWorld :: World -> [(Id, Object)] -> [(Id, Object)]
 filterWorld world mapping = filter ((`elem` flatWorld) . fst) mapping

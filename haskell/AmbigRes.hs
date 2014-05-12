@@ -6,10 +6,13 @@ import Data.Maybe
 
 data Ambiguity = Ambiguity Bool Id [Id]
 
+test :: PDDLWorld
+test = convertWorld complexWorld
+
 ---------------------------------------------------------------------------
 
 resolveAmbig :: [[PDDL]] -> Either Ambiguity [PDDL]
-resolveAmbig []     = error "impossibru"
+resolveAmbig []     = error "Not Possible"
 resolveAmbig [x]    = Right x
 resolveAmbig (x:xs) =
   case multiDst of
@@ -24,7 +27,7 @@ resolveAmbig (x:xs) =
 
 checkDstDups :: [PDDL] -> [[PDDL]] -> Maybe Ambiguity
 checkDstDups [] [] = Nothing
-checkDstDups [] xs = checkDstDups (head xs) (tail xs)
+checkDstDups [] (x:xs) = checkDstDups x xs
 checkDstDups x xs  =
   case dstList of
     Nothing  -> checkDstDups (tail x) xs
@@ -34,15 +37,25 @@ checkDstDups x xs  =
     
 findAllDstDups :: PDDL -> [[PDDL]] -> Maybe Ambiguity
 findAllDstDups x []     = Nothing
-findAllDstDups (PDDL rel src dst) (x:xs) =
-  let ys =  [dst' | (PDDL _ src' dst') <- x, src == src']
+findAllDstDups x xs =
+  let ys = concatMap (dstDups x) xs
       in if null ys
-      then findAllDstDups (PDDL rel src dst) xs
-      else (Just (Ambiguity False src ys))
+      then Nothing
+      else (Just (Ambiguity True src ys))
+           where
+             (PDDL _ src _) = x
+
+dstDups :: PDDL -> [PDDL] -> [Id]
+dstDups x [] = []
+dstDups (PDDL rel src dst) xs =
+  let ys = [dst' | (PDDL _ src' dst') <- xs, src == src']
+      in if null ys
+      then dstDups (PDDL rel src dst) (tail xs)
+      else ys ++ dstDups (PDDL rel src dst) (tail xs)
 
 checkSrcDups :: [PDDL] -> [[PDDL]] -> Maybe Ambiguity
 checkSrcDups [] [] = Nothing
-checkSrcDups [] xs = checkSrcDups (head xs) (tail xs)
+checkSrcDups [] (x:xs) = checkSrcDups x xs
 checkSrcDups x xs  =
   case srcList of
     Nothing  -> checkSrcDups (tail x) xs
@@ -52,11 +65,24 @@ checkSrcDups x xs  =
     
 findAllSrcDups :: PDDL -> [[PDDL]] -> Maybe Ambiguity
 findAllSrcDups x []     = Nothing
-findAllSrcDups (PDDL rel src dst) (x:xs) =
-  let ys =  [src' | (PDDL _ src' dst') <- x, dst == dst']
+findAllSrcDups x xs =
+  let ys = concatMap (srcDups x) xs
       in if null ys
-      then findAllSrcDups (PDDL rel src dst) xs
-      else Just (Ambiguity True dst ys)
+      then Nothing
+      else (Just (Ambiguity False dst ys))
+           where (PDDL _ _ dst) = x
+
+srcDups :: PDDL -> [PDDL] -> [Id]
+srcDups x [] = []
+srcDups (PDDL rel src dst) xs =
+  let ys = [src' | (PDDL _ src' dst') <- xs, dst == dst']
+      in if null ys
+      then srcDups (PDDL rel src dst) (tail xs)
+      else ys ++ srcDups (PDDL rel src dst) (tail xs)
 
 buildChoices :: Ambiguity -> String
-buildChoices _ = "TODO!"
+buildChoices (Ambiguity isDst id listId) = case isDst of
+  True  -> "Destination Ambiguity"
+  False -> "Source Ambiguity"
+  
+

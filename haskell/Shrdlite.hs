@@ -29,20 +29,20 @@ testGoals2 = [PDDL Ontop "f" "m", PDDL Beside "m" "a", PDDL Ontop "m" "k"]
 jsonMain :: JSObject JSValue -> JSValue
 jsonMain jsinput =
   case amb of
-    Left a  -> makeObj result
+    Left  a -> makeObj result
     Right b -> makeObj clarResult
     where
-      (wasAmbig, ambList, theChoices)  =
-        case resolveAmbig [goals] of
+      (wasAmbig, ambList, theChoices) =
+        case resolveAmbig [goals,goals] of
           Right _ -> (False, [],"")
-          Left a  -> (True, (map show goals), buildChoices a)
+          Left x  -> (True, (map show goals), buildChoices x)
       utterance = ok (valFromObj "utterance" jsinput) :: Utterance
       world     = ok (valFromObj "world"     jsinput) :: World
       holding   = ok (valFromObj "holding"   jsinput) :: Id
       hold      = ok (valFromObj "hold"      jsinput) :: Id
       objects   = ok (valFromObj "objects"   jsinput) :: Objects
       amb       = resultToEither (valFromObj "amb" jsinput) :: Either String [String]
-        
+
       trees     = parse command utterance :: [Command]
 
       goals     = [goal | tree <- trees, goal <- interpret world holding objects tree] :: [PDDL]
@@ -64,7 +64,7 @@ jsonMain jsinput =
                    ("output",    showJSON output)
                   ] ++ if wasAmbig then [("amb", showJSON ambList)] else []
                                                                          
-      clarResult = [("utterance", showJSON utterance),
+      clarResult = [("utterance", showJSON utterance),--TODO Filter out ambiguity here
                    ("trees",     showJSON (map show trees)),
                    ("goals",     if length trees >= 1 then showJSON (map show goals) else JSNull),
                    ("plan",      if length goals == 1 then showJSON plan  else JSNull),

@@ -15,11 +15,11 @@ resolveAmbig :: [[PDDL]] -> Either Ambiguity [PDDL]
 resolveAmbig []     = error "Not Possible"
 resolveAmbig [x]    = Right x
 resolveAmbig (x:xs) =
-  case multiDst of
-    Nothing   -> case multiSrc of
+  case multiSrc of
+    Nothing   -> case multiDst of
       Nothing   -> resolveAmbig xs
-      Just ambD -> Left ambD
-    Just ambS -> Left ambS
+      Just ambS -> Left ambS
+    Just ambD -> Left ambD
     where
       multiSrc = checkSrcDups x xs
       multiDst = checkDstDups x xs
@@ -48,7 +48,7 @@ findAllDstDups x xs =
 dstDups :: PDDL -> [PDDL] -> [Id]
 dstDups x [] = []
 dstDups (PDDL rel src dst) xs =
-  let ys = [dst' | (PDDL _ src' dst') <- xs, src == src']
+  let ys = [dst' | (PDDL rel src' dst') <- xs, src == src']
       in if null ys
       then dstDups (PDDL rel src dst) (tail xs)
       else ys ++ dstDups (PDDL rel src dst) (tail xs)
@@ -75,14 +75,25 @@ findAllSrcDups x xs =
 srcDups :: PDDL -> [PDDL] -> [Id]
 srcDups x [] = []
 srcDups (PDDL rel src dst) xs =
-  let ys = [src' | (PDDL _ src' dst') <- xs, dst == dst']
+  let ys = [src' | (PDDL rel src' dst') <- xs, dst == dst']
       in if null ys
       then srcDups (PDDL rel src dst) (tail xs)
       else ys ++ srcDups (PDDL rel src dst) (tail xs)
 
 buildChoices :: Ambiguity -> String
 buildChoices (Ambiguity isDst id listId) = case isDst of
-  True  -> "Destination Ambiguity"
-  False -> "Source Ambiguity"
+  True  -> "Ambiguity error! Specify where you want the "
+           ++ show (getObjId id)
+           ++ ", by entering a number:\n"
+           ++ printObjects listId 1
+  False -> "Ambiguity error! The "
+           ++ show (getObjId id)
+           ++ " wants you to specify an object, by entering a number:\n"
+           ++ printObjects listId 1
   
-
+printObjects :: [Id] -> Int -> String
+printObjects [] _ = []
+printObjects (x:xs) n = (show n ++ ". "
+                         ++ drop 7 (show (getObjId x))
+                         ++ "\n")
+                         ++ printObjects xs (n+1)

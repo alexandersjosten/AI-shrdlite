@@ -23,7 +23,7 @@ data Quantifier = The | Any | All
                   deriving (Eq, Ord, Show)
 
 data Relation = Beside | Leftof | Rightof | Above | Ontop | Under | Inside
-                deriving (Eq, Ord, Show)
+                deriving (Eq, Ord, Show, Read)
 
 data Size = AnySize | Small | Large 
             deriving (Eq, Ord, Show)

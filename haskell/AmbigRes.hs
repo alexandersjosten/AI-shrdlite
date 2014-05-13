@@ -4,7 +4,7 @@ import ShrdliteGrammar
 import HelpFunctions
 import Data.Maybe
 
-data AmbType = Source | Dest
+data AmbType = Source | Dest deriving (Show, Eq, Read)
 data Ambiguity = Ambiguity AmbType Id [Id]
 
 test :: PDDLWorld

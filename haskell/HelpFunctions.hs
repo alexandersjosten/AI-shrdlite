@@ -18,11 +18,11 @@ type Move = (Int,Int) -- (Pick int, Drop int)
 
 -- First, divide the features that describe the world into primitive 
 -- and derived features. Definite clauses are 
-data PDDL = PDDL Relation Id Id
+data PDDL = PDDL Relation Id Id deriving (Show, Read, Eq)
 
 -- With this Eq, we can check if a PDDLworld == PDDLworld
-instance Eq PDDL where
-    (PDDL _ n11 n12) == (PDDL _ n21 n22) = n11 == n21 && n12 == n22
+{-instance Eq PDDL where
+    (PDDL _ n11 n12) == (PDDL _ n21 n22) = n11 == n21 && n12 == n22-}
 --(ontop a b), (ontop b floor-n)
 
 
@@ -43,14 +43,14 @@ listOfObjects = [("a", Object Large Green Brick)
 				,("m", Object Small Blue Box) 
 				]
 
-instance Show PDDL where
+{-instance Show PDDL where
   show (PDDL Beside  i1 i2) = "beside "  ++ i1 ++ " " ++ i2
   show (PDDL Leftof  i1 i2) = "leftof "  ++ i1 ++ " " ++ i2
   show (PDDL Rightof i1 i2) = "rightof " ++ i1 ++ " " ++ i2
   show (PDDL Above   i1 i2) = "above "   ++ i1 ++ " " ++ i2
   show (PDDL Ontop   i1 i2) = "ontop "   ++ i1 ++ " " ++ i2
   show (PDDL Under   i1 i2) = "under "   ++ i1 ++ " " ++ i2
-  show (PDDL Inside  i1 i2) = "inside "  ++ i1 ++ " " ++ i2
+  show (PDDL Inside  i1 i2) = "inside "  ++ i1 ++ " " ++ i2-}
 
 -- Find stack number and hight from Id
 findSAH :: Id -> World -> (Int,Int)		

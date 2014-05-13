@@ -4,7 +4,8 @@ import ShrdliteGrammar
 import HelpFunctions
 import Data.Maybe
 
-data Ambiguity = Ambiguity Bool Id [Id]
+data AmbType = Source | Dest
+data Ambiguity = Ambiguity AmbType Id [Id]
 
 test :: PDDLWorld
 test = convertWorld complexWorld
@@ -15,47 +16,42 @@ resolveAmbig :: [[PDDL]] -> Either Ambiguity [PDDL]
 resolveAmbig []     = error "Not Possible"
 resolveAmbig [x]    = Right x
 resolveAmbig (x:xs) =
-  case multiSrc of
-    Nothing   -> case multiDst of
-      Nothing   -> resolveAmbig xs
-      Just ambS -> Left ambS
-    Just ambD -> Left ambD
-    where
-      multiSrc = checkSrcDups x xs
-      multiDst = checkDstDups x xs
-
-
+  case checkSrcDups x xs of
+    Nothing -> case checkDstDups x xs of
+      Nothing -> error "There must be ambiguity!"
+      Just d  -> Left d
+    Just s  -> Left s
+    
 checkDstDups :: [PDDL] -> [[PDDL]] -> Maybe Ambiguity
 checkDstDups [] [] = Nothing
-checkDstDups [] (x:xs) = checkDstDups x xs
+checkDstDups x  [] = Nothing
+checkDstDups [] (y:ys) = checkDstDups y ys
 checkDstDups x xs  =
   case dstList of
     Nothing  -> checkDstDups (tail x) xs
     Just amb -> Just amb
     where
-      dstList = findAllDstDups (head x) xs
-    
+        dstList = findAllDstDups (head x) xs
+        
 findAllDstDups :: PDDL -> [[PDDL]] -> Maybe Ambiguity
 findAllDstDups x []     = Nothing
 findAllDstDups x xs =
   let ys = concatMap (dstDups x) xs
       in if null ys
       then Nothing
-      else (Just (Ambiguity True src ys))
+      else (Just (Ambiguity Dest src ys))
            where
              (PDDL _ src _) = x
 
 dstDups :: PDDL -> [PDDL] -> [Id]
 dstDups x [] = []
 dstDups (PDDL rel src dst) xs =
-  let ys = [dst' | (PDDL rel src' dst') <- xs, src == src']
-      in if null ys
-      then dstDups (PDDL rel src dst) (tail xs)
-      else ys ++ dstDups (PDDL rel src dst) (tail xs)
+  dst : [dst' | (PDDL rel' src' dst') <- xs, src == src']
 
 checkSrcDups :: [PDDL] -> [[PDDL]] -> Maybe Ambiguity
 checkSrcDups [] [] = Nothing
-checkSrcDups [] (x:xs) = checkSrcDups x xs
+checkSrcDups x  [] = Nothing
+checkSrcDups [] (y:ys) = checkSrcDups y ys
 checkSrcDups x xs  =
   case srcList of
     Nothing  -> checkSrcDups (tail x) xs
@@ -69,31 +65,23 @@ findAllSrcDups x xs =
   let ys = concatMap (srcDups x) xs
       in if null ys
       then Nothing
-      else (Just (Ambiguity False dst ys))
+      else (Just (Ambiguity Source dst ys))
            where (PDDL _ _ dst) = x
 
 srcDups :: PDDL -> [PDDL] -> [Id]
 srcDups x [] = []
 srcDups (PDDL rel src dst) xs =
-  let ys = [src' | (PDDL rel src' dst') <- xs, dst == dst']
-      in if null ys
-      then srcDups (PDDL rel src dst) (tail xs)
-      else ys ++ srcDups (PDDL rel src dst) (tail xs)
-
+  src : [src' | (PDDL rel' src' dst') <- xs, dst == dst']
+  
 buildChoices :: Ambiguity -> String
 buildChoices (Ambiguity isDst id listId) = case isDst of
-  True  -> "Ambiguity error! Specify where you want the "
-           ++ show (getObjId id)
-           ++ ", by entering a number:\n"
-           ++ printObjects listId 1
-  False -> "Ambiguity error! The "
-           ++ show (getObjId id)
-           ++ " wants you to specify an object, by entering a number:\n"
-           ++ printObjects listId 1
+  Dest   -> "Ambiguity error! Specify by entering a number: "
+            ++ printObjects listId 1
+  Source -> "Ambiguity error! Specify by entering a number: "
+            ++ printObjects listId 1
   
 printObjects :: [Id] -> Int -> String
 printObjects [] _ = []
 printObjects (x:xs) n = (show n ++ ". "
                          ++ drop 7 (show (getObjId x))
-                         ++ "\n")
-                         ++ printObjects xs (n+1)
+                         ++ printObjects xs (n+1))

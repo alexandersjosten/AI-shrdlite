@@ -51,9 +51,11 @@ jsonMain jsinput =
       
       --noAmbig   = isAmbiguousW goals :: [PDDL]
 
+      --plan      = "test"
       plan      =
         case goals of
              []     -> error "Fucking interpreter couldn't find a goal!"
+             ([]:g:gs) -> solve world hold holding g :: Plan
              (g:gs) -> solve world hold holding g :: Plan
 
       output     = if null trees then "Parse error!"

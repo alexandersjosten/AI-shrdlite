@@ -80,21 +80,26 @@ talkingBastard ((x,y):ms) w = do
 -- Case for holding objects and goals when only taking up objects is next.
 solve :: World -> Id -> Id -> [PDDL] -> Plan
 solve world hold holding  ((PDDL t a b):goal)
-                          | hold /= "no" = if holding == a && b=="" then [] else ["I drop " ++ amIAlone a (convertWorld world),"drop " ++ show holdMove ++ " "] ++ (solve newWorld "no" "-" goal')
+                          | hold /= "no" = if holding == a && b=="" then [] else ["I drop " ++ amIAlone a (convertWorld world),"drop " ++ show holdMove ++ " "] ++ (solve newWorld "no" "" goal')
                           | b == ""        =  startTB allMovesT (convertWorld world) ++ [" and now I'm holding the " ++ amIAlone a nw," pick " ++ show (fst $ findSAH a world)]
                           | otherwise      =  startTB allMoves (convertWorld world)
                                             
     where
-        allMoves   = fst $ runDfs goal' world
-        (allMovesT,nw)  = runDfs [PDDL t a ""] world
-        holdMove   = head $ getObjMoves (getObjId holding) pddlWorld 
+        maxD       = length world
+        allMoves   = fst $ runDfs maxD  goal' world
+        (allMovesT,nw)  = runDfs maxD [PDDL t a ""] world
+        holdMoveList   = [(drop' i pddlWorld holding, i)  | i <- getObjMoves (getObjId holding) pddlWorld] 
+        holdMoveGoals = filter (/= -1) [ if checkGoal w (PDDL t a b) then i else -1 |  (w,i) <- holdMoveList]
+        holdMove = case holdMoveGoals of
+                        [] -> snd $ head $ holdMoveList
+                        b  -> head $ holdMoveGoals
         newWorld   = convertPDDLWorld $  drop' holdMove pddlWorld holding 
         pddlWorld  = convertWorld world
         goal' = ((PDDL t a b):goal)
 solve world hold holding []  = error "No goal??? Interpreter ..... "    
 -- Breth first search, bad version
-runDfs :: [PDDL] -> World -> ([Move],PDDLWorld)
-runDfs g w = safeHead $ filter (/= ([],[])) [ dfs i ss g wP [] [wP] | i<-[(sDepth)..]]
+runDfs :: Int-> [PDDL] -> World -> ([Move],PDDLWorld)
+runDfs maxD g w = safeHead $ filter (/= ([],[])) [ dfs i ss g wP [] [wP] | i<-[(sDepth)..maxD]]
 				where
 					stuff = map (findStuff w) g
 					(sDepth',ss) = maximum' stuff
@@ -105,7 +110,7 @@ runDfs g w = safeHead $ filter (/= ([],[])) [ dfs i ss g wP [] [wP] | i<-[(sDept
 dfs :: Int -> (Int,Int) -> [PDDL] -> PDDLWorld -> [Move] -> [PDDLWorld] ->  ([Move],PDDLWorld)
 dfs 0 _ g w ms _   = if  and (map (checkGoal w) g) then (ms,w) else ([],[])
 dfs d ss g w ms wos =  do
-        let wos' = bfsStep ss (ms,w) (w:wos)
+        let wos' =  bfsStep ss (ms,w) (w:wos)
         safeHead $ filter (/= ([],[])) [dfs (d-1) ss g (snd i) (fst i) ((snd i):wos) | i<-wos']
 					
 -- Goes one level down in the tree and return list of Worlds and the moves to get to that world

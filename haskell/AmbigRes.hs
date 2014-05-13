@@ -39,14 +39,14 @@ findAllDstDups x xs =
   let ys = concatMap (dstDups x) xs
       in if null ys
       then Nothing
-      else (Just (Ambiguity Dest src ys))
+      else (Just (Ambiguity Dest src (dst:ys)))
            where
-             (PDDL _ src _) = x
+             (PDDL _ src dst) = x
 
 dstDups :: PDDL -> [PDDL] -> [Id]
 dstDups x [] = []
 dstDups (PDDL rel src dst) xs =
-  dst : [dst' | (PDDL rel' src' dst') <- xs, src == src']
+  [dst' | (PDDL rel' src' dst') <- xs, src == src']
 
 checkSrcDups :: [PDDL] -> [[PDDL]] -> Maybe Ambiguity
 checkSrcDups [] [] = Nothing
@@ -65,23 +65,20 @@ findAllSrcDups x xs =
   let ys = concatMap (srcDups x) xs
       in if null ys
       then Nothing
-      else (Just (Ambiguity Source dst ys))
-           where (PDDL _ _ dst) = x
+      else (Just (Ambiguity Source dst (src:ys)))
+           where (PDDL _ src dst) = x
 
 srcDups :: PDDL -> [PDDL] -> [Id]
 srcDups x [] = []
 srcDups (PDDL rel src dst) xs =
-  src : [src' | (PDDL rel' src' dst') <- xs, dst == dst']
+  [src' | (PDDL rel' src' dst') <- xs, dst == dst']
   
-buildChoices :: Ambiguity -> String
-buildChoices (Ambiguity isDst id listId) = case isDst of
-  Dest   -> "Ambiguity error! Specify by entering a number: "
-            ++ printObjects listId 1
-  Source -> "Ambiguity error! Specify by entering a number: "
-            ++ printObjects listId 1
+buildChoices :: Ambiguity -> [String]
+buildChoices (Ambiguity isDst id listId) =
+  ["Ambiguity error! Specify by entering a number:"]
+  ++ printObjects listId 1
   
-printObjects :: [Id] -> Int -> String
+printObjects :: [Id] -> Int -> [String]
 printObjects [] _ = []
-printObjects (x:xs) n = (show n ++ ". "
-                         ++ drop 7 (show (getObjId x))
-                         ++ printObjects xs (n+1))
+printObjects (x:xs) n = [show n ++ ". " ++ drop 7 (show (getObjId x))]
+                         ++ printObjects xs (n+1)

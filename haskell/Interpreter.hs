@@ -29,11 +29,14 @@ exampleTable = [ ("a", Object Large Green Brick)
                , ("m", Object Small Blue Box)
                ]
 
-complexWorld :: World
-complexWorld = [["e"], ["l", "a"], ["j", "h", "i"], ["b", "g", "k", "c"], ["f", "m", "d"]]
+complexWorld2 :: World 
+complexWorld2 = [["e"],["a","l"],["i","h","j"],["k","c","g","b"],["d","m","f"]]
 
 smallWorld :: World
-smallWorld = [["e"], ["l", "g"], [], ["f", "m", "k"], []]
+smallWorld = [[], ["g", "l"], ["m"], ["k", "e"], ["f"]]
+
+mediumWorld :: World
+mediumWorld = [["e"],["a","l"],[],[],["i","g","h"],["j"],[],["k","c","b"],[],["d","m","f"]]
 
 -- Colors: Black | White | Blue | Green | Yellow | Red
 colorTable :: [(String, Color)]
@@ -81,7 +84,7 @@ interpret world holding objects tree =
     where table = createTable objects
           os    = filterWorld world table
           adding = ((filter ((== holding) . fst) table) ++ os)
-          
+
 -- Filters all the objects from the JSON-part that doesn't exist in the world
 filterWorld :: World -> [(Id, Object)] -> [(Id, Object)]
 filterWorld world mapping = filter ((`elem` flatWorld) . fst) mapping
@@ -112,90 +115,112 @@ findStuff ((id, obj):xs) s
 
 --------------------------------------------------------------------------------
 
--- RelativeEntity Quantifier Object Location
+getEntities :: Entity -> [(Id, Object)] -> World -> (Quantifier, [Id])
+getEntities Floor                                 _  _ = (The, ["floor"])
+getEntities (BasicEntity q o)                     os _ =
+  case getObjectIds o os of
+    [] -> (q, [])
+    xs -> (q, xs)
+getEntities (RelativeEntity q o l@(Relative r e)) os w =
+  case getObjectIds o os of
+    [] -> (q, [])
+    xs -> case getLocations l os w of
+      (_, _, []) -> error $ "getEntities : Can't find any entities matching " ++ show e
+      (q', r', ys) -> case checkRelations xs ys r' q' w os of
+        [] -> (q, [])
+        zs -> (q, zs)
+
+getLocations :: Location -> [(Id, Object)] -> World -> (Quantifier, Relation, [Id])
+getLocations (Relative r e) os w =
+  case e of
+    Floor                -> (The, r, ["floor"])
+    BasicEntity    q _   -> (q, r, [id | id <- id'])
+    RelativeEntity q _ _ -> (q, r, [id | id <- id'])
+  where (_, id') = getEntities e os w
+
 translateCmd :: Command -> [(Id, Object)] -> World -> Id -> [[(Id, Relation, Id)]]
 translateCmd cmd os w holding =
   case cmd of
     Move Floor _ -> error "translateCommand: Can't move floor!"
-    Move e     l -> createTriple (getEntities e os w) (getLocations l os w) os
+    Move e     l -> createTriple es ls r q q' os
+      where (q', r, ls) = getLocations l os w
+            (q, es) = getEntities e os w
     Take Floor   -> error "translateCommand: Can't take floor!"
-    Take e       -> createTriple (getEntities e os w) [(Ontop, "")] os
+    Take e       -> createTriple es [""] Ontop q Any os
+      where (q, es) = getEntities e os w
     Put        l -> case holding of
       "" -> error "translateCommand: Can't put anything down, not holding anything!"
-      id -> createTriple (The, [id]) (getLocations l os w) os
+      id -> createTriple [id] ls r The q os
+        where (q, r,ls) = getLocations l os w
 
-createTriple :: (Quantifier, [Id]) -> [(Relation, Id)] -> [(Id, Object)] -> [[(Id, Relation, Id)]]
-createTriple (_, [] ) _  _            = []
-createTriple (q, ids'@(id:ids)) rs os = case q of
-  All -> [createAllTriple' ids' rs os]
-  Any -> [head $ createTriple' id rs : createTriple (q, ids) rs os]
-  The -> createTriple' id rs : createTriple (q, ids) rs os
-  where createAllTriple' :: [Id] -> [(Relation, Id)] -> [(Id, Object)] -> [(Id, Relation, Id)]
-        createAllTriple' []       _  _  = []
-        createAllTriple' _        [] _  = []
-        createAllTriple' (id:ids) rs os = findLegal id rs os : createAllTriple' ids rs os
+createTriple :: [Id] -> [Id] -> Relation -> Quantifier -> Quantifier -> [(Id, Object)] -> [[(Id, Relation, Id)]]
+createTriple []            _  _ _ _  _  = []
+createTriple ids'@(id:ids) ls r q q' os = case q of
+  All -> [createAllTriple ids' ls r q' os]
+  Any -> [createTriple' id ls r q'] -- : createTriple2 ids ls r q q' os
+  The -> createTriple' id ls r q' : createTriple ids ls r q q' os
 
-        createTriple' :: Id -> [(Relation, Id)] -> [(Id, Relation, Id)]
-        createTriple' _  []            = []
-        createTriple' id ((r, id'):rs) = (id, r, id') : createTriple' id rs
+createAllTriple :: [Id] -> [Id] -> Relation -> Quantifier -> [(Id, Object)] -> [(Id, Relation, Id)]
+createAllTriple id1 id2 r q os = createAllTriple' id1 id2 r q os []
+  where createAllTriple' :: [Id] -> [Id] -> Relation -> Quantifier -> [(Id, Object)] -> [(Id, Relation, Id)] -> [(Id, Relation, Id)]
+        createAllTriple' [] _ _ q' _ acc  = case acc of
+          [] -> []
+          xs -> case q' of
+            Any -> [head xs]
+            _   -> xs
+        createAllTriple' _ [] _ _ _ _    = []
+        createAllTriple' (id:ids) ls r q os acc = createAllTriple' ids ls r q os (findLegal id ls r os : acc)
 
-findLegal :: Id -> [(Relation, Id)] -> [(Id, Object)] -> (Id, Relation, Id)
-findLegal id  []          _  = error $ "findLegal: Can't find legal combination!"
-findLegal id ((r, i):rs) os =
-  if i == "floor" || okMove o1 o2 then
-    (id, r, i)
+createTriple' :: Id -> [Id] -> Relation -> Quantifier -> [(Id, Relation, Id)]
+createTriple' _  []        _ _ = []
+createTriple' id (id':ids) r q =
+  case q of
+    Any -> [(id, r, id')]
+    _   -> (id, r, id') : createTriple' id ids r q
+
+findLegal :: Id -> [Id] -> Relation -> [(Id, Object)] -> (Id, Relation, Id)
+findLegal id  []       _ _  = error $ "findLegal: Can't find legal combination!"
+findLegal id (id':ids) r os =
+  if id' == "floor" || okMove o1 o2 then
+    (id, r, id')
   else
-    findLegal id rs os
-  where o1 = snd $ head $ filter ((== id) . fst) os
-        o2 = snd $ head $ filter ((== i ) . fst) os
-  
+    findLegal id ids r os
+  where o1 = snd $ head $ filter ((== id ) . fst) os
+        o2 = snd $ head $ filter ((== id') . fst) os
 
-getEntities :: Entity -> [(Id, Object)] -> World -> (Quantifier, [Id])
-getEntities Floor                               _  _ = (The, ["floor"])
-getEntities (BasicEntity q o)                   os _ =
-  case getObjectIds o os of
-    [] -> (q, []) --error $ "getEntities 1: Can't find any objects matching " ++ show o
-    xs -> case q of
-      Any -> (q, [head xs])
-      _   -> (q, xs)
-getEntities (RelativeEntity q o l@(Relative r e)) os w =
-  case getObjectIds o os of
-    [] -> (q, []) --error $ "getEntities 2: Can't find any objects matching " ++ show o
-    xs -> case getLocations l os w of
-      [] -> (q, []) --error $ "getEntities 3: Can't find any entities matching " ++ show e
-      ys -> case checkRelations xs ys w os of
-        [] -> (q, []) --error $ "getEntities 4: Can't find any entities matching " ++ show e ++ " " ++ show r ++ " " ++ show ys
-        zs -> case q of
-          Any -> (q, [head zs])
-          _   -> (q, zs)
-
-getLocations :: Location -> [(Id, Object)] -> World -> [(Relation, Id)]
-getLocations (Relative r e) os w = [(r, id) | id <- id']
-  where (_, id') = getEntities e os w
-
-checkWorld :: Id -> World -> [(Id, Object)] -> (Relation, Id) -> Bool
-checkWorld id1 w objects (r, id2)
-  | id1 /= id2 && id1 /= "floor" && id2 /= "floor" =
+checkWorld :: Id -> [Id] -> Relation -> Quantifier -> World -> [(Id, Object)] -> Bool
+checkWorld id ids r q w objects
+  | and (map (/= id) ids) && id /= "floor" && and (map (/= "floor") ids) =
       case r of
-        Beside  -> i1 /= i2
-        Leftof  -> i1 < i2
-        Rightof -> i1 > i2
-        Above   -> i1 == i2 && i1' < i2'
-        Ontop   -> i1 == i2 && i1' == (i2' - 1)
-        Under   -> i1 == i2 && i1' > i2'
-        Inside  -> i1 == i2 && i1' == (i2' - 1) && getForm id2 == Box
+        Beside  -> checkWorld' q (map ((/= i1) . fst) indices)
+        Leftof  -> checkWorld' q (map ((< i1) . fst) indices)
+        Rightof -> checkWorld' q (map ((> i1) . fst) indices)
+        Above   -> checkWorld' q (map (\(i2, i2') -> i1 == i2 && i1' < i2') indices)
+        Ontop   -> checkWorld' q (map (\(i2, i2') -> i1 == i2 && i1' == (i2' + 1)) indices)
+        Under   -> checkWorld' q (map (\(i2, i2') -> i1 == i2 && i1' < i2') indices)
+        Inside  -> checkWorld' q (map (\(i2, i2') -> i1 == i2 && i1' == (i2' + 1)) indices)   --getForm id2 == Box
+  | and (map (== "floor") ids) =
+      case r of
+        Ontop -> i1' == 0
+        _     -> False
   | otherwise = False
   where getForm :: Id -> Form
         getForm id = (\(Object _ _ f) -> f) (snd $ head $ filter ((== id) . fst) objects)
-        (i1, i1')  = getIndices w id1
-        (i2, i2')  = getIndices w id2
+        
+        (i1, i1')  = getIndices w id
+        indices    = map (getIndices w) ids
 
-checkRelations :: [Id] -> [(Relation, Id)] -> World -> [(Id, Object)] -> [Id]
-checkRelations []       _  _ _  = []
-checkRelations (id:ids) ys w os =
-  case filter (checkWorld id w os) ys of
-    [] -> checkRelations ids ys w os
-    _  -> id : checkRelations ids ys w os
+        checkWorld' :: Quantifier -> [Bool] -> Bool
+        checkWorld' All xs = and xs
+        checkWorld' _   xs = or xs
+
+checkRelations :: [Id] -> [Id] -> Relation -> Quantifier -> World -> [(Id, Object)] -> [Id]
+checkRelations []       _  _ _ _ _  = []
+checkRelations (id:ids) ys r q w os =
+  if checkWorld id ys r q w os then
+    id : checkRelations ids ys r q w os
+  else
+    checkRelations ids ys r q w os
 
 -- Get all the ids matching a given object that exist in the current world
 getObjectIds :: Object -> [(Id, Object)] -> [Id]

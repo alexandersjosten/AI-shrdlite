@@ -30,10 +30,10 @@ exampleTable = [ ("a", Object Large Green Brick)
                ]
 
 complexWorld2 :: World 
-complexWorld2 = [["e"],["a","l"],["i","h","j"],["k","c","g","b"],["d","m","f"]]
+complexWorld2 = [[], ["a", "l", "g", "h"], ["i"], ["c", "k", "e"], ["d", "m", "b", "j", "f"]]
 
 smallWorld :: World
-smallWorld = [[], ["g", "l"], ["m"], ["k", "e"], ["f"]]
+smallWorld = [["e"], ["g", "l"], [], ["k", "m", "f"], []]
 
 mediumWorld :: World
 mediumWorld = [["e"],["a","l"],[],[],["i","g","h"],["j"],[],["k","c","b"],[],["d","m","f"]]
@@ -71,7 +71,7 @@ testInterpret world holding objects cmd =
           adding = ((filter ((== holding) . fst) objects) ++ os)
 
 createPDDL :: [[(Id, Relation, Id)]] -> [[PDDL]]
-createPDDL xs = map createPDDL' xs
+createPDDL xs   = map createPDDL' xs
   where createPDDL' :: [(Id, Relation, Id)] -> [PDDL]
         createPDDL' [] = []
         createPDDL' ((id1, r, id2):pddls) = PDDL r id1 id2 : createPDDL' pddls
@@ -144,7 +144,7 @@ translateCmd cmd os w holding =
     Move Floor _ -> error "translateCommand: Can't move floor!"
     Move e     l -> createTriple es ls r q q' os
       where (q', r, ls) = getLocations l os w
-            (q, es) = getEntities e os w
+            (q, es)     = getEntities e os w
     Take Floor   -> error "translateCommand: Can't take floor!"
     Take e       -> createTriple es [""] Ontop q Any os
       where (q, es) = getEntities e os w
@@ -156,20 +156,24 @@ translateCmd cmd os w holding =
 createTriple :: [Id] -> [Id] -> Relation -> Quantifier -> Quantifier -> [(Id, Object)] -> [[(Id, Relation, Id)]]
 createTriple []            _  _ _ _  _  = []
 createTriple ids'@(id:ids) ls r q q' os = case q of
-  All -> [createAllTriple ids' ls r q' os]
-  Any -> [createTriple' id ls r q'] -- : createTriple2 ids ls r q q' os
+  All -> [createAllTriple ids' ls r q os]
+  Any -> [createTriple' id (filter (/= id) ls) r q']
   The -> createTriple' id ls r q' : createTriple ids ls r q q' os
 
 createAllTriple :: [Id] -> [Id] -> Relation -> Quantifier -> [(Id, Object)] -> [(Id, Relation, Id)]
-createAllTriple id1 id2 r q os = createAllTriple' id1 id2 r q os []
-  where createAllTriple' :: [Id] -> [Id] -> Relation -> Quantifier -> [(Id, Object)] -> [(Id, Relation, Id)] -> [(Id, Relation, Id)]
-        createAllTriple' [] _ _ q' _ acc  = case acc of
-          [] -> []
-          xs -> case q' of
-            Any -> [head xs]
-            _   -> xs
-        createAllTriple' _ [] _ _ _ _    = []
-        createAllTriple' (id:ids) ls r q os acc = createAllTriple' ids ls r q os (findLegal id ls r os : acc)
+createAllTriple id1 ["floor"] r _ _  = [(id1', r, "floor") | id1' <- id1]
+createAllTriple id1 id2       r q os = createAllTriple' id1 id2 r q os []
+
+createAllTriple' :: [Id] -> [Id] -> Relation -> Quantifier -> [(Id, Object)] -> [(Id, Relation, Id)] -> [(Id, Relation, Id)]
+createAllTriple' [] _ _ q' _ acc  = case acc of
+  [] -> []
+  xs -> case q' of
+    Any -> [head xs]
+    _   -> xs
+createAllTriple' _ [] _ _ _ _    = []
+createAllTriple' (id:ids) ls r q os acc = createAllTriple' ids ls' r q os (legal : acc)
+  where legal@(_, _, i2) = findLegal id ls r os
+        ls'              = delete i2 ls
 
 createTriple' :: Id -> [Id] -> Relation -> Quantifier -> [(Id, Relation, Id)]
 createTriple' _  []        _ _ = []
@@ -193,8 +197,8 @@ checkWorld id ids r q w objects
   | and (map (/= id) ids) && id /= "floor" && and (map (/= "floor") ids) =
       case r of
         Beside  -> checkWorld' q (map ((/= i1) . fst) indices)
-        Leftof  -> checkWorld' q (map ((< i1) . fst) indices)
-        Rightof -> checkWorld' q (map ((> i1) . fst) indices)
+        Leftof  -> checkWorld' q (map ((i1 <) . fst) indices)
+        Rightof -> checkWorld' q (map ((i1 >) . fst) indices)
         Above   -> checkWorld' q (map (\(i2, i2') -> i1 == i2 && i1' < i2') indices)
         Ontop   -> checkWorld' q (map (\(i2, i2') -> i1 == i2 && i1' == (i2' + 1)) indices)
         Under   -> checkWorld' q (map (\(i2, i2') -> i1 == i2 && i1' < i2') indices)

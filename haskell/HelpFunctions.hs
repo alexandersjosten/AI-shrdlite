@@ -61,7 +61,7 @@ findSAH id w =  do
 
 -- Returns the first id of a PDDL, the one that is on top        
 getId :: PDDL -> Id
-getId (PDDL Ontop a _) = a           
+getId (PDDL _ a _) = a           
 
 -- Returns object from id
 getObjId :: Id -> Object
@@ -87,23 +87,9 @@ okMove (Object s1 _ Ball)      (Object s2 _ AnyForm)    = True     -- Balls must
 okMove (Object s1 _ Ball)      (Object s2 _ Box)        = s1 <= s2 -- Balls must be in a box,     otherwise they roll away. 
 okMove (Object s1 _ Ball)      (Object s2 _ Table)      = False    -- Balls must be in a box,     otherwise they roll away.
 okMove (Object s1 _ Ball)      (Object s2 _ Brick)      = False    -- Balls must be in a box,     otherwise they roll away.
-okMove (Object s1 _ Box)       (Object s2 _ Box)        = s1 < s2
+okMove (Object s1 _ Box)       (Object s2 _ Box)        = False
 okMove (Object s1 _ _)         (Object s2 _  _)         = s1 <= s2 -- Small objects cannot support large objects.
 
-{-
-
-    -The floor can support any number of objects.
-    -All objects must be supported by something.
-    The arm can only hold one object at the time.
-    -The arm can only pick up free objects.
-    -Objects are “in” boxes, but “on” other objects.
-    -Balls must be in boxes or on the floor, otherwise they roll away.
-    -Balls cannot support anything.
-    -Small objects cannot support large objects.
-    -Boxes cannot contain pyramids or planks of the same size.
-    -Boxes can only be supported by tables or planks of the same size, but large boxes can also be supported by large bricks.
-
--}
 
 -- Get all leagal moves in the world
 getAllMove :: PDDLWorld -> [Move]
@@ -194,6 +180,7 @@ convertPDDLWorld (c:cs) = (reverse (createPDDL c)):convertPDDLWorld  cs
 				createPDDL [] = []
 				createPDDL((PDDL Ontop a _):xs) =[a] ++ createPDDL xs
         
+
 -- Takes list of moves and a world, and returns a new world after the moves have been made
 convertMoveToWorld :: [Move] -> PDDLWorld -> PDDLWorld
 convertMoveToWorld [] w         = w
@@ -201,7 +188,8 @@ convertMoveToWorld ((x,y):m) w  = do
                      let (i,nw) = take' x w
                      let nw'    = drop' y nw i
                      convertMoveToWorld m nw'
-                     
+
+-- Convert a PDDL World to a list of Objects                     
 convertToObjects :: PDDLWorld -> [Object]
 convertToObjects w = map getObjId $ concat (convertPDDLWorld w)
                      
@@ -215,7 +203,7 @@ maximum' (x:xs) = maxTail x xs
           | otherwise   = maxTail (m, n) ps
 
 
--- test worlds
+-- Worlds for testing
 medWorld :: World
 medWorld = [["e"],["a","l"],[],[],["i","h","j"],[],[],["k","g","c","b"],[],["d","m","f"]]
 
@@ -228,8 +216,12 @@ testWorld = [["e"],["g","l"],[],["k","m","f"],[]]
 simpleWorld :: World
 simpleWorld = [["e"],[],[],[],[]]
 
-
-
+-- Return head of list, if list is  empty returns ([].[])                                 
+safeHead :: [([Move],PDDLWorld)] -> ([Move],PDDLWorld)
+safeHead lst | lst == [] = ([],[])
+			 | otherwise = head lst
+			 
 ok :: Result a -> a
 ok (Ok res) = res
 ok (Error err) = error err
+

@@ -44,12 +44,12 @@ solve world hold holding  ((PDDL t a b):goal)
 runBfs :: Int-> [PDDL] -> World -> ([Move],PDDLWorld)
 runBfs maxD g w 
 			| not $ and $ map (\(PDDL t a b)-> okMove (getObjId a) (getObjId b)) (filter isOnTop g) = ([],[])
-			|  otherwise= if sDepth>maxD then ([(sDepth,sDepth)],convertWorld w)
+			|  otherwise= if sDepth>maxD then ([(sDepth,(-1))],convertWorld w)
 					else safeHead $ filter (/= ([],[])) [ bfs i ss g wP [] [wP] | i<-[(sDepth)..maxD]]
 				where
 					heuristicsList = map (heuristics w) g
 					(sDepth',ss) = maximum' heuristicsList
-					sDepth = sDepth' + length g - 1
+					sDepth = sum $ fst $ unzip heuristicsList
 					wP = (convertWorld w)
 					
 -- Starts going down the left most tree. Depth-first-search, with depth level

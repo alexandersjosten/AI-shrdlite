@@ -92,6 +92,11 @@ okMove (Object s1 _ Box)       (Object s2 _ Box)        = False    -- Boxes can 
 okMove (Object s1 _ _)         (Object s2 _  _)         = s1 <= s2 -- Small objects cannot support large objects.
 
 
+isOnTop :: PDDL -> Bool
+isOnTop (PDDL Ontop _ _) = True
+isOnTop (PDDL Inside _ _) = True
+isOnTop _ = False
+
 -- Get all leagal moves in the world
 getAllMove :: PDDLWorld -> [Move]
 getAllMove ws = concat [ zip (repeat i) (getObjMoves (getIdPrim (head (ws !! i))) ws) |  i<-[0..length ws -1] , (ws !! i) /= []]

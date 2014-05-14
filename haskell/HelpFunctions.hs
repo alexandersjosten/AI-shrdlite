@@ -87,7 +87,8 @@ okMove (Object s1 _ Ball)      (Object s2 _ AnyForm)    = True     -- Balls must
 okMove (Object s1 _ Ball)      (Object s2 _ Box)        = s1 <= s2 -- Balls must be in a box,     otherwise they roll away. 
 okMove (Object s1 _ Ball)      (Object s2 _ Table)      = False    -- Balls must be in a box,     otherwise they roll away.
 okMove (Object s1 _ Ball)      (Object s2 _ Brick)      = False    -- Balls must be in a box,     otherwise they roll away.
-okMove (Object s1 _ Box)       (Object s2 _ Box)        = False
+okMove (Object s1 _ Ball)      (Object s2 _ Plank)      = False    -- Balls must be in a box,     otherwise they roll away.
+okMove (Object s1 _ Box)       (Object s2 _ Box)        = False    -- Boxes can only be supported by tables of the same size.
 okMove (Object s1 _ _)         (Object s2 _  _)         = s1 <= s2 -- Small objects cannot support large objects.
 
 

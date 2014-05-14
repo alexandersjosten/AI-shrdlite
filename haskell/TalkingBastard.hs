@@ -50,7 +50,8 @@ moveSentence id = case getObjId id of
             (Object s c Table) ->"Akwardddd,,, I move "
 
 startTB :: [Move] -> PDDLWorld -> Plan
-startTB [] _         = ["I found it "]
+startTB [] _         = ["Not possible!"]
+startTB [(99,99)] _  = ["It is free! EASY!"]
 startTB ((x,y):[]) w 
 					| x> 13    = ["No way! I'm not doing this! I'm expecting a minimum of " ++ show x ++ " moves! This must be impossible"]
 					|otherwise = do
@@ -67,7 +68,6 @@ startTB ((x,y):ms) w = do
 
 
 talkingBastard :: [Move] -> PDDLWorld -> Plan
-talkingBastard [] _         = ["I found it "]
 talkingBastard ((x,y):[]) w = do
                  let (i,nw) = take' x w
                  let stack =  (w !! y)

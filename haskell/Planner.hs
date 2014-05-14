@@ -21,13 +21,15 @@ solve :: World -> Id -> Id -> [PDDL] -> Plan
 solve world hold holding []  = ["No goal??? Interpreter ..... "] 
 solve world hold holding  ((PDDL t a b):goal)
       | hold /= "no"    = if holding == a && b=="" then [] 
-                          else ["I drop " ++ amIAlone a (convertWorld world),"drop " ++ show holdMove ++ " "] ++ (solve newWorld "no" "" goal')
-      | b == ""         = startTB allMovesT (convertWorld world) ++ [" and now I'm holding the " ++ amIAlone a nw," pick " ++ show (fst $ findSAH a world)]
+                          else ["I drop " ++ amIAlone holding (convertWorld world),"drop " ++ show holdMove ++ " "] ++ (solve newWorld "no" "" goal')
+      | b == ""         = startTB allMovesT (convertWorld world) ++ [" and now I'm holding the " ++ amIAlone a pddlWorld," pick " ++ show (fst $ findSAH a world)]
       | otherwise       = startTB allMoves (convertWorld world)
     where
         maxD            = length world
         allMoves        = fst $ runBfs maxD  goal' world
-        (allMovesT,nw)  = runBfs maxD [PDDL t a ""] world
+        (allMovesT,nw)  = case runBfs maxD [PDDL t a ""] world of
+								([],nw') -> ([(99,99)],nw')
+								b -> b
         newWorld        = convertPDDLWorld $  drop' holdMove pddlWorld holding 
         pddlWorld       = convertWorld world
         goal'           = ((PDDL t a b):goal)

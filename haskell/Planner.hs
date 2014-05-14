@@ -21,9 +21,11 @@ solve :: World -> Id -> Id -> [PDDL] -> Plan
 solve world hold holding []  = ["No goal??? Interpreter ..... "] 
 solve world hold holding  ((PDDL t a b):goal)
 	  | not $ and $ map (\(PDDL t a b)-> okMove (getObjId a) (getObjId b)) (filter isOnTop ((PDDL t a b):goal)) = ["Not Possible!"]
-	  | and $ map (checkGoal pddlWorld) ((PDDL t a b):goal) = ["Already a goal!"]
+	  | (b /= "") && (and $ map (checkGoal pddlWorld) ((PDDL t a b):goal)) = ["Already a goal!"]
       | hold /= "no"    = if holding == a && b=="" then [] 
-                          else ["I drop " ++ amIAlone holding (convertWorld world),"drop " ++ show holdMove ++ " "] ++ (solve newWorld "no" "" goal')
+                          else case b of
+                          "floor" -> ["I drop " ++ amIAlone holding (convertWorld world),"drop " ++ show holdMove ++ " "]
+                          _ ->  ["I drop " ++ amIAlone holding (convertWorld world),"drop " ++ show holdMove ++ " "] ++ (solve newWorld "no" "" goal')
       | b == ""         = startTB allMovesT (convertWorld world) ++ [" and now I'm holding the " ++ amIAlone a pddlWorld," pick " ++ show (fst $ findSAH a world)]
       | otherwise       = startTB allMoves (convertWorld world)
     where

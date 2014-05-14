@@ -25,7 +25,7 @@ solve world hold holding  ((PDDL t a b):goal)
       | b == ""         = startTB allMovesT (convertWorld world) ++ [" and now I'm holding the " ++ amIAlone a pddlWorld," pick " ++ show (fst $ findSAH a world)]
       | otherwise       = startTB allMoves (convertWorld world)
     where
-        maxD            = length world
+        maxD            = length $ concat world
         allMoves        = fst $ runBfs maxD  goal' world
         (allMovesT,nw)  = case runBfs maxD [PDDL t a ""] world of
 								([],nw') -> ([(99,99)],nw')

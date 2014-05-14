@@ -80,5 +80,5 @@ buildChoices (Ambiguity isDst id listId) =
   
 printObjects :: [Id] -> Int -> [String]
 printObjects [] _ = []
-printObjects (x:xs) n = [show n ++ ". " ++ drop 7 (show (getObjId x))]
+printObjects (x:xs) n = [show n ++ ". " ++ drop 7 (show (getObjId x))] --might cause error if floor or  "" is the id
                          ++ printObjects xs (n+1)

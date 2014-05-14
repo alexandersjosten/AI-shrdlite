@@ -89,12 +89,13 @@ okMove (Object s1 _ Ball)      (Object s2 _ Table)      = False    -- Balls must
 okMove (Object s1 _ Ball)      (Object s2 _ Brick)      = False    -- Balls must be in a box,     otherwise they roll away.
 okMove (Object s1 _ Box)       (Object s2 _ Box)        = s1 < s2  -- Small boxes can be in large boxes
 okMove (Object s1 _ Ball)      (Object s2 _ Plank)      = False    -- Balls must be in a box,     otherwise they roll away.
-okMove (Object s1 _ Box)       (Object s2 _ Box)        = False    -- Boxes can only be supported by tables of the same size.
+--okMove (Object s1 _ Box)       (Object s2 _ Box)        = False    -- Boxes can only be supported by tables of the same size.
 okMove (Object s1 _ _)         (Object s2 _  _)         = s1 <= s2 -- Small objects cannot support large objects.
 
 
 isOnTop :: PDDL -> Bool
 isOnTop (PDDL Ontop _ "floor") = False
+isOnTop (PDDL Ontop _ "") = False
 isOnTop (PDDL Ontop _ _) = True
 isOnTop (PDDL Inside _ _) = True
 isOnTop _ = False

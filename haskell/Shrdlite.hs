@@ -61,10 +61,10 @@ jsonMain jsinput =
         Nothing -> error "Can't happen!"
         Just x  -> filterChoice x goals
 
-      plan      =
+      plan      = --"kisi"
         case goals of
              []     -> error "Fucking interpreter couldn't find a goal!"
-             --([]:g:gs) -> solve world hold holding g :: Plan
+             ([]:g:gs) -> solve world hold holding g :: Plan
              (g:gs) -> solve world hold holding g :: Plan
 
       output

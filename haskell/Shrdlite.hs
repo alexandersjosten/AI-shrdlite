@@ -55,7 +55,7 @@ jsonMain jsinput =
 
       trees     = parse command utterance :: [Command]
 
-      goals     = [goal | tree <- trees, goal <- interpret world holding objects tree] :: [[PDDL]]
+      goals     = filter (/= []) [goal | tree <- trees, goal <- interpret world holding objects tree] :: [[PDDL]]
 
       ambGoals  = case getChoice utterance of
         Nothing -> error "Can't happen!"
@@ -64,7 +64,7 @@ jsonMain jsinput =
       plan      =
         case goals of
              []     -> error "Fucking interpreter couldn't find a goal!"
-             ([]:g:gs) -> solve world hold holding g :: Plan
+             --([]:g:gs) -> solve world hold holding g :: Plan
              (g:gs) -> solve world hold holding g :: Plan
 
       output

@@ -5,7 +5,7 @@ import HelpFunctions
 import Data.Maybe
 
 data AmbType = Source | Dest deriving (Show, Eq, Read)
-data Ambiguity = Ambiguity AmbType Id [Id]
+data Ambiguity = Ambiguity AmbType Id [Id] deriving (Show)
 
 test :: PDDLWorld
 test = convertWorld complexWorld
@@ -80,5 +80,7 @@ buildChoices (Ambiguity isDst id listId) =
   
 printObjects :: [Id] -> Int -> [String]
 printObjects [] _ = []
+--printObjects ("floor":xs) = .... TODO
+--printObjects ("":xs) = .... TODO
 printObjects (x:xs) n = [show n ++ ". " ++ drop 7 (show (getObjId x))] --might cause error if floor or  "" is the id
                          ++ printObjects xs (n+1)

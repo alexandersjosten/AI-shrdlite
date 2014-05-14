@@ -437,13 +437,8 @@ function userInput() {
                     'holding': currentWorld.holding,
                     'hold': currentWorld.hold,
                     'state': currentWorld.state,
-		    'amb' : currentWorld.amb,
                     'utterance': userinput.split(/\s+/)
                    };
-
-    if(currentWorld.amb != null) {
-	ajaxdata.amb = currentWorld.amb;
-    }
 
     $.ajax({
         url: AjaxScript,
@@ -462,7 +457,7 @@ function userInput() {
         }
         debugResult(result);
         sayUtterance("system", result.output);
-        if (result.state) {
+        if (result.state !== null) {
             currentWorld.state = result.state;
         }
         currentPlan = result.plan;

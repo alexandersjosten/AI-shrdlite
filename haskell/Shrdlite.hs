@@ -18,7 +18,9 @@ import Planner
 import Data.Char
 
 main :: IO ()
-main = getContents >>= putStrLn . encode . jsonMain . ok . decode
+main = do
+  input <- getContents
+  putStrLn . encode . jsonMain . ok $  decode input
 
 --Test Goals
 
@@ -29,13 +31,48 @@ testGoals2 = [PDDL Ontop "f" "m", PDDL Beside "m" "a", PDDL Ontop "m" "k"]
 
 jsonMain :: JSObject JSValue -> JSValue
 jsonMain jsinput =
-  let amb = fmap read (valFromObj "amb" jsinput) :: Result [[PDDL]] in
+  let amb = (valFromObj "state" jsinput) :: Result String in
   case amb of
-    Error fresh  -> makeObj result
+    
+    Ok prev | prev /= "" -> makeObj result
+      where          
+        utterance = ok (valFromObj "utterance" jsinput) :: Utterance
+        world     = ok (valFromObj "world"     jsinput) :: World
+        holding   = case valFromObj "holding" jsinput of
+          Ok id   -> id
+          Error _ -> ""
+        hold      = ok (valFromObj "hold"      jsinput) :: Id
+
+        goals     = case getChoice utterance of
+          Nothing -> []
+          Just x  -> case fmap read amb of
+            Error _ -> []
+            Ok c    -> filterChoice x c
+
+        plan      =
+          case goals of
+            []        -> error "Fucking interpreter couldn't find a goal!"
+            ([]:g:gs) -> solve world hold holding g :: Plan
+            (g:gs)    -> solve world hold holding g :: Plan
+             
+        output  = case getChoice utterance of
+          Nothing -> ["I told you to give me a choice of 1-5?! Restarting!"]
+          Just x  -> ["Nice choice of " ++ [intToDigit x]]
+    
+        clarified  = case getChoice utterance of
+          Nothing -> False
+          Just x  -> True
+      
+        result =
+            [("plan",      if clarified then showJSON plan  else JSNull),
+             ("output",    showJSON output),
+             ("state", showJSON "")]
+
+    _  -> makeObj result
       where       
         (wasAmbig, ambList, theChoices) =
           case resolveAmbig goals of
-            Right _ -> (False, showJSON "",[""])
+            Right _ -> (False, JSNull,[""])
             Left x -> (True, showJSON $ show goals, buildChoices x)
           
         utterance = ok (valFromObj "utterance" jsinput) :: Utterance
@@ -54,10 +91,6 @@ jsonMain jsinput =
 
         goals = filter (/= []) [goal | tree <- trees, goal <- interpret world holding objects tree] :: [[PDDL]]
 
-        ambGoals = case getChoice utterance of
-          Nothing -> error "Can't happen!"
-          Just x -> filterChoice x goals
-
         plan = --"kisi"
           case goals of
             [] -> error "Fucking interpreter couldn't find a goal!"
@@ -70,57 +103,13 @@ jsonMain jsinput =
           | wasAmbig = theChoices
           | null plan = ["Planning error!"]
           | otherwise = ["Success!"]
-
-        ambOutput = case getChoice utterance of
-          Nothing -> ["I told you to give me a choice of 1-5?! Restarting!"]
-          Just x -> ["Nice choice of " ++ [intToDigit x]]
-    
-        clarified = case getChoice utterance of
-          Nothing -> False
-          Just x -> True
         
         result = [("utterance", showJSON utterance),
                    ("trees", showJSON (map show trees)),
                    ("goals", if length trees >= 1 then showJSON (map show goals) else JSNull),
                    ("plan", if length goals == 1 then showJSON plan else JSNull),
                    ("output", showJSON output)
-                  ] ++ if wasAmbig then [("amb", ambList)] else []
-    
-    Ok prev -> makeObj clarResult
-      where          
-        utterance = ok (valFromObj "utterance" jsinput) :: Utterance
-        world     = ok (valFromObj "world"     jsinput) :: World
-        holding   = case valFromObj "holding" jsinput of
-          Ok id   -> id
-          Error _ -> ""
-        hold      = ok (valFromObj "hold"      jsinput) :: Id
-
-        goals     = case getChoice utterance of
-          Nothing -> []
-          Just x  -> case amb of
-            Error _ -> []
-            Ok c    -> filterChoice x c
-
-        plan      =
-          case goals of
-            []        -> error "Fucking interpreter couldn't find a goal!"
-            ([]:g:gs) -> solve world hold holding g :: Plan
-            (g:gs)    -> solve world hold holding g :: Plan
-             
-        output  = case getChoice utterance of
-          Nothing -> ["I told you to give me a choice of 1-5?! Restarting!"]
-          Just x  -> ["Nice choice of " ++ [intToDigit x]]
-    
-        clarified  = case getChoice utterance of
-          Nothing -> False
-          Just x  -> True
-      
-        clarResult =
-          [--("utterance",showJSON utterance),--TODO Filter out ambiguity here
-                    --("trees",     showJSON (map show trees)),
-                    --("goals",     if length trees >= 1 then showJSON (map show goals) else JSNull),
-            ("plan",      if clarified then showJSON plan  else JSNull),
-            ("output",    showJSON output)]
+                  ] ++ if wasAmbig then [("state", ambList)] else []
 
 getChoice :: [String] -> Maybe Int
 getChoice [] = Nothing
@@ -134,20 +123,17 @@ filterChoice :: Int -> PDDLWorld -> PDDLWorld
 filterChoice x yss =
   case resolveAmbig yss of
     Right b -> [b]
-    Left  a -> [filterGoal (atype, id, list !! (x-1)) yss]
-      where (Ambiguity atype id list) = a
+    Left  (Ambiguity atype id list) ->
+      fltrGl (atype, id, list !! (x-1)) yss
 
+fltrGl :: (AmbType, Id, Id) -> PDDLWorld -> PDDLWorld
+fltrGl (t, i1, i2) = filter flt
+  where
+    flt = case t of
+      Source -> elemBy (\(PDDL _ id1 id2) -> i1 == id2 && i2 == id1)
+      _      -> elemBy (\(PDDL _ id1 id2) -> i1 == id1 && i2 == id2)
 
-filterGoal :: (AmbType, Id, Id) -> PDDLWorld -> [PDDL]
-filterGoal _ [] = []
-filterGoal (t,i1,i2) (x:xs) 
-  | t == Source =
-    let ys = [(PDDL rel id1 id2) | (PDDL rel id1 id2) <- x,i1 == id1 && i2 == id2 ]
-      in if null ys
-         then filterGoal (t,i1,i2) xs
-         else x
-  | otherwise =
-    let ys = [(PDDL rel id1 id2) | (PDDL rel id1 id2) <- x,i2 == id1 && i1 == id2 ]
-      in if null ys
-         then filterGoal (t,i1,i2) xs
-         else x
+elemBy :: (a -> Bool) -> [a] -> Bool
+elemBy f (x:xs) | f x       = True
+                | otherwise = elemBy f xs
+elemBy _ _                  = False

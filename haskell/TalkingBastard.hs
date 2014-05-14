@@ -50,9 +50,10 @@ moveSentence id = case getObjId id of
             (Object s c Table) ->"Akwardddd,,, I move "
 
 startTB :: [Move] -> PDDLWorld -> Plan
-startTB [(99,99)] _    = ["No way! I'm not doing this! To many subgoals!"]
 startTB [] _         = ["I found it "]
-startTB ((x,y):[]) w = do
+startTB ((x,y):[]) w 
+					| x> 13    = ["No way! I'm not doing this! I'm expecting a minimum of " ++ show x ++ " moves! This must be impossible"]
+					|otherwise = do
                  let (i,nw) = take' x w
                  let stack =  (w !! y)
                  let finaltext = case stack of

@@ -53,7 +53,7 @@ startTB :: [Move] -> PDDLWorld -> Plan
 startTB [] _         = ["Not possible!"]
 startTB [(99,99)] _  = ["It is free! EASY!"]
 startTB ((x,y):[]) w 
-					| x> 13    = ["No way! I'm not doing this! I'm expecting a minimum of " ++ show x ++ " moves! This must be impossible"]
+					| x> 5    = ["No way! I'm not doing this! I'm expecting a minimum of " ++ show x ++ " moves! This must be impossible"]
 					|otherwise = do
                  let (i,nw) = take' x w
                  let stack =  (w !! y)

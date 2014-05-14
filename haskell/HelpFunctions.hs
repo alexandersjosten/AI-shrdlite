@@ -93,6 +93,7 @@ okMove (Object s1 _ _)         (Object s2 _  _)         = s1 <= s2 -- Small obje
 
 
 isOnTop :: PDDL -> Bool
+isOnTop (PDDL Ontop _ "floor") = False
 isOnTop (PDDL Ontop _ _) = True
 isOnTop (PDDL Inside _ _) = True
 isOnTop _ = False

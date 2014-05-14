@@ -28,7 +28,7 @@ solve world hold holding  ((PDDL t a b):goal)
         maxD            = length $ concat world
         allMoves        = fst $ runBfs maxD  goal' world
         (allMovesT,nw)  = case runBfs maxD [PDDL t a ""] world of
-								([],nw') -> ([(99,99)],nw')
+								([],nw') -> ([(99,99)],nw') -- Special case of only one move
 								b -> b
         newWorld        = convertPDDLWorld $  drop' holdMove pddlWorld holding 
         pddlWorld       = convertWorld world

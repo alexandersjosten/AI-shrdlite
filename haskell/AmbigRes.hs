@@ -18,7 +18,7 @@ resolveAmbig [x]    = Right x
 resolveAmbig (x:xs) =
   case checkSrcDups x xs of
     Nothing -> case checkDstDups x xs of
-      Nothing -> error "There must be ambiguity!"
+      Nothing -> error $ show (x:xs)
       Just d  -> Left d
     Just s  -> Left s
     

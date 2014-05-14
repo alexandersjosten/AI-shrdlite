@@ -40,7 +40,8 @@ solve world hold holding  ((PDDL t a b):goal)
 
 -- Breth first search, calls bfs with increasing depth
 runBfs :: Int-> [PDDL] -> World -> ([Move],PDDLWorld)
-runBfs maxD g w = safeHead $ filter (/= ([],[])) [ bfs i ss g wP [] [wP] | i<-[(sDepth)..maxD]]
+runBfs maxD g w = if sDepth>maxD then ([(99,99)],convertWorld w)
+					else safeHead $ filter (/= ([],[])) [ bfs i ss g wP [] [wP] | i<-[(sDepth)..maxD]]
 				where
 					heuristicsList = map (heuristics w) g
 					(sDepth',ss) = maximum' heuristicsList

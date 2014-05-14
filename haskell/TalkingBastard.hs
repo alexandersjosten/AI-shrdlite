@@ -50,6 +50,7 @@ moveSentence id = case getObjId id of
             (Object s c Table) ->"Akwardddd,,, I move "
 
 startTB :: [Move] -> PDDLWorld -> Plan
+startTB [(99,99)] _    = ["No way! I'm not doing this! To many subgoals!"]
 startTB [] _         = ["I found it "]
 startTB ((x,y):[]) w = do
                  let (i,nw) = take' x w

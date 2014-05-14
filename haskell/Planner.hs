@@ -21,13 +21,15 @@ solve :: World -> Id -> Id -> [PDDL] -> Plan
 solve world hold holding []  = ["No goal??? Interpreter ..... "] 
 solve world hold holding  ((PDDL t a b):goal)
       | hold /= "no"    = if holding == a && b=="" then [] 
-                          else ["I drop " ++ amIAlone a (convertWorld world),"drop " ++ show holdMove ++ " "] ++ (solve newWorld "no" "" goal')
-      | b == ""         = startTB allMovesT (convertWorld world) ++ [" and now I'm holding the " ++ amIAlone a nw," pick " ++ show (fst $ findSAH a world)]
+                          else ["I drop " ++ amIAlone holding (convertWorld world),"drop " ++ show holdMove ++ " "] ++ (solve newWorld "no" "" goal')
+      | b == ""         = startTB allMovesT (convertWorld world) ++ [" and now I'm holding the " ++ amIAlone a pddlWorld," pick " ++ show (fst $ findSAH a world)]
       | otherwise       = startTB allMoves (convertWorld world)
     where
         maxD            = length world
         allMoves        = fst $ runBfs maxD  goal' world
-        (allMovesT,nw)  = runBfs maxD [PDDL t a ""] world
+        (allMovesT,nw)  = case runBfs maxD [PDDL t a ""] world of
+								([],nw') -> ([(99,99)],nw')
+								b -> b
         newWorld        = convertPDDLWorld $  drop' holdMove pddlWorld holding 
         pddlWorld       = convertWorld world
         goal'           = ((PDDL t a b):goal)
@@ -40,12 +42,14 @@ solve world hold holding  ((PDDL t a b):goal)
 
 -- Breth first search, calls bfs with increasing depth
 runBfs :: Int-> [PDDL] -> World -> ([Move],PDDLWorld)
-runBfs maxD g w = if sDepth>maxD then ([(sDepth,sDepth)],convertWorld w)
+runBfs maxD g w 
+			| not $ and $ map (\(PDDL t a b)-> okMove (getObjId a) (getObjId b)) (filter isOnTop g) = ([],[])
+			|  otherwise= if sDepth>maxD then ([(sDepth,(-1))],convertWorld w)
 					else safeHead $ filter (/= ([],[])) [ bfs i ss g wP [] [wP] | i<-[(sDepth)..maxD]]
 				where
 					heuristicsList = map (heuristics w) g
 					(sDepth',ss) = maximum' heuristicsList
-					sDepth = sDepth' + length g - 1
+					sDepth = sum $ fst $ unzip heuristicsList
 					wP = (convertWorld w)
 					
 -- Starts going down the left most tree. Depth-first-search, with depth level

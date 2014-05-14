@@ -30,7 +30,7 @@ exampleTable = [ ("a", Object Large Green Brick)
                ]
 
 complexWorld2 :: World 
-complexWorld2 = [[], ["a", "l", "g", "h"], ["i"], ["c", "k", "e"], ["d", "m", "b", "j", "f"]]
+complexWorld2 = [["e"], ["a", "l", "g", "k", "m"], ["i", "h", "j", "b"], ["c", "f"], ["d"]]
 
 smallWorld :: World
 smallWorld = [["e"], ["g", "l"], [], ["k", "m", "f"], []]
@@ -119,11 +119,11 @@ getEntities :: Entity -> [(Id, Object)] -> World -> (Quantifier, [Id])
 getEntities Floor                                 _  _ = (The, ["floor"])
 getEntities (BasicEntity q o)                     os _ =
   case getObjectIds o os of
-    [] -> (q, [])
+    [] -> error $ "getEntities: can't find the object " ++ show o --(q, [])
     xs -> (q, xs)
 getEntities (RelativeEntity q o l@(Relative r e)) os w =
   case getObjectIds o os of
-    [] -> (q, [])
+    [] -> error $ "getEntities: can't find the object " ++ show o --(q, [])
     xs -> case getLocations l os w of
       (_, _, []) -> error $ "getEntities : Can't find any entities matching " ++ show e
       (q', r', ys) -> case checkRelations xs ys r' q' w os of
@@ -155,10 +155,20 @@ translateCmd cmd os w holding =
 
 createTriple :: [Id] -> [Id] -> Relation -> Quantifier -> Quantifier -> [(Id, Object)] -> [[(Id, Relation, Id)]]
 createTriple []            _  _ _ _  _  = []
-createTriple ids'@(id:ids) ls r q q' os = case q of
-  All -> [createAllTriple ids' ls r q os]
-  Any -> [createTriple' id (filter (/= id) ls) r q']
-  The -> createTriple' id ls r q' : createTriple ids ls r q q' os
+createTriple ids'@(id:ids) ls r q q' os =
+  case q of
+    All -> [createAllTriple ids' ls r q os]
+    Any -> [createTriple' id' (filter (/= id') ls) r q']
+    The -> createTriple' id ls r q' : createTriple ids ls r q q' os
+  where id' = firstValid ids' ls r os
+
+        firstValid :: [Id] -> [Id] -> Relation -> [(Id, Object)] -> Id
+        firstValid []       _    _ _  = error "firstValid: Can't find valid Id!"
+        firstValid (id:ids) [""] r os = id
+        firstValid (id:ids) ids' r os =
+          case findLegal id ids' r os of
+            ("" , _, "") -> firstValid ids ids' r os
+            (id', _, _ ) -> id'
 
 createAllTriple :: [Id] -> [Id] -> Relation -> Quantifier -> [(Id, Object)] -> [(Id, Relation, Id)]
 createAllTriple id1 ["floor"] r _ _  = [(id1', r, "floor") | id1' <- id1]
@@ -183,7 +193,7 @@ createTriple' id (id':ids) r q =
     _   -> (id, r, id') : createTriple' id ids r q
 
 findLegal :: Id -> [Id] -> Relation -> [(Id, Object)] -> (Id, Relation, Id)
-findLegal id  []       _ _  = error $ "findLegal: Can't find legal combination!"
+findLegal id  []       r _  = ("", r, "")
 findLegal id (id':ids) r os =
   if id' == "floor" || okMove o1 o2 then
     (id, r, id')

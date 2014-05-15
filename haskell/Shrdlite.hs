@@ -33,7 +33,6 @@ jsonMain :: JSObject JSValue -> JSValue
 jsonMain jsinput =
   let amb = (valFromObj "state" jsinput) :: Result String in
   case amb of
-    
     Ok prev | prev /= "" -> makeObj result
       where          
         utterance = ok (valFromObj "utterance" jsinput) :: Utterance
@@ -43,11 +42,22 @@ jsonMain jsinput =
           Error _ -> ""
         hold      = ok (valFromObj "hold"      jsinput) :: Id
 
-        goals     = case getChoice utterance of
-          Nothing -> []
-          Just x  -> case fmap read amb of
-            Error _ -> []
-            Ok c    -> filterChoice x c
+        goals
+          | clarified = case fmap read amb of
+            Error _ -> error "!"
+            Ok c    -> case resolveAmbig c of
+              Right a -> [a]
+              Left b  -> case getChoice utterance b of
+                Nothing -> error "!!"
+                Just x  -> filterChoice x c
+          | otherwise  = case fmap read amb of
+            Error _ -> error "!"
+            Ok a -> a
+
+        (wasAmbig, ambList, theChoices) =
+          case resolveAmbig goals of
+            Right _ -> (False, JSNull,[""])
+            Left x  -> (True, showJSON $ show goals, buildChoices x)
 
         plan      =
           case goals of
@@ -55,18 +65,23 @@ jsonMain jsinput =
             ([]:g:gs) -> solve world hold holding g :: Plan
             (g:gs)    -> solve world hold holding g :: Plan
              
-        output  = case getChoice utterance of
-          Nothing -> ["I told you to give me a choice of 1-5?! Restarting!"]
-          Just x  -> ["Nice choice of " ++ [intToDigit x]]
+        clarified = case fmap read amb of
+            Error _ -> False
+            Ok c -> case resolveAmbig c of
+              Left a -> case getChoice utterance a of
+                Nothing -> False
+                Just x  -> True
+              Right b -> True
     
-        clarified  = case getChoice utterance of
-          Nothing -> False
-          Just x  -> True
+        output
+          | clarified && not wasAmbig = ["Ok!"]
+          | clarified = theChoices
+          | otherwise = ["Ehh, why not trying to chose something that exist? Restarting."]
       
         result =
-            [("plan",      if clarified then showJSON plan  else JSNull),
-             ("output",    showJSON output),
-             ("state", showJSON "")]
+            [("output", showJSON output),
+             ("state", if clarified && wasAmbig then ambList else showJSON ""),
+             ("plan", if clarified && not wasAmbig then showJSON plan else JSNull)]
 
     _  -> makeObj result
       where       
@@ -109,18 +124,19 @@ jsonMain jsinput =
                    ("goals", if length trees >= 1 then showJSON (map show goals) else JSNull),
                    ("plan", if length goals == 1 then showJSON plan else JSNull),
                    ("output", showJSON output)
-                  ] ++ if wasAmbig then [("state", ambList)] else []
+                  ] ++ if wasAmbig then [("state", ambList)] else [("state", showJSON "")]
 
-getChoice :: [String] -> Maybe Int
-getChoice [] = Nothing
-getChoice [[x]]
+getChoice :: [String] -> Ambiguity -> Maybe Int
+getChoice [] _ = Nothing
+getChoice [[x]] (Ambiguity _ _ idlist)
   | isDigit x
     && digitToInt x >= 1
-    && digitToInt x < 6 = Just (digitToInt x)
+    && digitToInt x < 6
+    && digitToInt x < length idlist = Just (digitToInt x)
   | otherwise = Nothing
 
 filterChoice :: Int -> PDDLWorld -> PDDLWorld
-filterChoice x yss =
+filterChoice x yss = 
   case resolveAmbig yss of
     Right b -> [b]
     Left  (Ambiguity atype id list) ->

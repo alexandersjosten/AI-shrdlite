@@ -73,8 +73,6 @@ bfsStep ss (mvs,w) ws = [k  | i <- (sortMoves ss (getAllMove w)),let k = sim i, 
                              (mvs ++ [(x,y)],nw')
 
 
-
-
 -- Sort what stacks to start working on
 sortMoves :: (Int,Int) -> [Move] -> [Move]
 sortMoves (s1,s2) mv =  sortBy (sortGT s2) (sortBy (sortGT s1) mv)

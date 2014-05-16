@@ -43,11 +43,11 @@ startSentence x | x < 3     =   "I can do this! It will only take " ++  show x +
 moveSentence :: Id -> String
 moveSentence id = case getObjId id of
             (Object s c Box) -> "Ohhh this is heavy, I move "
-            (Object s c Ball) -> "Slippery shiiit, I move "
+            (Object s c Ball) -> "Slippery!, I move "
             (Object s c Brick) -> "I don't want to move this one, ohh hell, I move " 
-            (Object s c Pyramid) ->"A pyramid, wtf, I move "
-            (Object s c Plank) ->"Fuff, it's hard to balance this one, I move  "
-            (Object s c Table) ->"Akward,,, I move "
+            (Object s c Pyramid) ->"A pyramid, what! I move "
+            (Object s c Plank) ->"O boy, it's hard to balance this one, I move  "
+            (Object s c Table) ->"Akward, I move "
 
 startTB :: [Move] -> PDDLWorld -> Plan
 startTB [] _         = ["Not possible!"]

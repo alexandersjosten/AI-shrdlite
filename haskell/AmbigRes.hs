@@ -75,7 +75,7 @@ srcDups (PDDL rel src dst) xs =
   
 buildChoices :: Ambiguity -> [String]
 buildChoices (Ambiguity isDst id listId) =
-  ["Ambiguity error! Specify by entering a number:"]
+  ["Ambiguity error! Specify by entering a single number:"]
   ++ printObjects listId 1
   
 printObjects :: [Id] -> Int -> [String]

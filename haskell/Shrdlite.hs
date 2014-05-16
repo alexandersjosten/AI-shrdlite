@@ -17,6 +17,14 @@ import Interpreter
 import Planner
 import Data.Char
 
+import System.IO.Unsafe
+
+debug :: Show a => FilePath -> a -> a
+debug file x = unsafePerformIO $ do
+  writeFile file (show x) ; return x
+
+-- ... x ... => ... (debug "filen.txt" x)
+
 main :: IO ()
 main = do
   input <- getContents
@@ -28,36 +36,45 @@ main = do
 testGoals1 = [PDDL Ontop "e" "k", PDDL Beside "e" "l", PDDL Beside "l" "i"]
 -- Put the black ball in the small blue box ontop of the large yellow box beside the large green brick
 testGoals2 = [PDDL Ontop "f" "m", PDDL Beside "m" "a", PDDL Ontop "m" "k"]
+testWorld2 = [[PDDL Ontop "e" "k"],
+  [PDDL Ontop "e" "l"],
+  [PDDL Ontop "e" "m"],
+  [PDDL Ontop "f" "k"],
+  [PDDL Ontop "f" "l"],
+  [PDDL Ontop "f" "m"]]
 
 jsonMain :: JSObject JSValue -> JSValue
 jsonMain jsinput =
   let amb = (valFromObj "state" jsinput) :: Result String in
-  case amb of
+  case (debug "ambs" amb) of
     Ok prev | prev /= "" -> makeObj result
-      where          
+      where
+        (wasAmbig, ambList, theChoices) =
+          case resolveAmbig goals of
+            Right _ -> (False, JSNull,[""])
+            Left x  -> (True, showJSON $ show goals, buildChoices x)
+
         utterance = ok (valFromObj "utterance" jsinput) :: Utterance
         world     = ok (valFromObj "world"     jsinput) :: World
         holding   = case valFromObj "holding" jsinput of
           Ok id   -> id
           Error _ -> ""
+
         hold      = ok (valFromObj "hold"      jsinput) :: Id
 
+        prevGoals = fmap read amb
+
         goals
-          | clarified = case fmap read amb of
+          | clarified = case (debug "prevgoals" (prevGoals)) of
             Error _ -> error "!"
-            Ok c    -> case resolveAmbig c of
+            Ok c    -> case (debug "eresolve" (resolveAmbig c)) of
               Right a -> [a]
-              Left b  -> case getChoice utterance b of
+              Left b  -> case (debug "egetC" (getChoice utterance b)) of
                 Nothing -> error "!!"
-                Just x  -> filterChoice x c
-          | otherwise  = case fmap read amb of
+                Just x  -> (debug "efilter" (filterChoice x c))
+          | otherwise  = case prevGoals of
             Error _ -> error "!"
             Ok a -> a
-
-        (wasAmbig, ambList, theChoices) =
-          case resolveAmbig goals of
-            Right _ -> (False, JSNull,[""])
-            Left x  -> (True, showJSON $ show goals, buildChoices x)
 
         plan      =
           case goals of
@@ -65,7 +82,7 @@ jsonMain jsinput =
             ([]:g:gs) -> solve world hold holding g :: Plan
             (g:gs)    -> solve world hold holding g :: Plan
              
-        clarified = case fmap read amb of
+        clarified = case prevGoals of
             Error _ -> False
             Ok c -> case resolveAmbig c of
               Left a -> case getChoice utterance a of
@@ -74,21 +91,24 @@ jsonMain jsinput =
               Right b -> True
     
         output
-          | clarified && not wasAmbig = ["Ok!"]
-          | clarified = theChoices
-          | otherwise = ["Ehh, why not trying to chose something that exist? Restarting."]
+          | not clarified = ["Ehh, why not trying to chose something that exist? Restarting."]
+          | clarified && wasAmbig = case resolveAmbig goals of
+              Right a -> error "EH WHAT?"
+              Left b -> ["There is some ambiguity left, "] ++ [drop 16 (head (theChoices))]
+          | otherwise = ["Great!"]
       
         result =
-            [("output", showJSON output),
-             ("state", if clarified && wasAmbig then ambList else showJSON ""),
-             ("plan", if clarified && not wasAmbig then showJSON plan else JSNull)]
+            [("utterance", showJSON utterance),
+             ("plan", if clarified && not wasAmbig then showJSON plan else JSNull),
+             ("output", showJSON output)]
+            ++ if wasAmbig then [("state", ambList)] else [("state", showJSON "")]
 
     _  -> makeObj result
       where       
         (wasAmbig, ambList, theChoices) =
           case resolveAmbig goals of
             Right _ -> (False, JSNull,[""])
-            Left x -> (True, showJSON $ show goals, buildChoices x)
+            Left x -> (True, showJSON $ show (debug "oldgoals" goals), buildChoices x)
           
         utterance = ok (valFromObj "utterance" jsinput) :: Utterance
         
@@ -124,7 +144,7 @@ jsonMain jsinput =
                    ("goals", if length trees >= 1 then showJSON (map show goals) else JSNull),
                    ("plan", if length goals == 1 then showJSON plan else JSNull),
                    ("output", showJSON output)
-                  ] ++ if wasAmbig then [("state", ambList)] else [("state", showJSON "")]
+                  ] ++ if wasAmbig then [("state", (debug "oldAmblist" ambList))] else [("state", showJSON "")]
 
 getChoice :: [String] -> Ambiguity -> Maybe Int
 getChoice [] _ = Nothing
@@ -132,22 +152,22 @@ getChoice [[x]] (Ambiguity _ _ idlist)
   | isDigit x
     && digitToInt x >= 1
     && digitToInt x < 6
-    && digitToInt x < length idlist = Just (digitToInt x)
+    && digitToInt x <= length idlist = Just (digitToInt x)
   | otherwise = Nothing
+getChoice _ _ = Nothing
 
 filterChoice :: Int -> PDDLWorld -> PDDLWorld
 filterChoice x yss = 
   case resolveAmbig yss of
     Right b -> [b]
     Left  (Ambiguity atype id list) ->
-      fltrGl (atype, id, list !! (x-1)) yss
+      fltrGl (atype, list !! (x-1)) yss
 
-fltrGl :: (AmbType, Id, Id) -> PDDLWorld -> PDDLWorld
-fltrGl (t, i1, i2) = filter flt
+fltrGl (t, i2) = filter flt
   where
     flt = case t of
-      Source -> elemBy (\(PDDL _ id1 id2) -> i1 == id2 && i2 == id1)
-      _      -> elemBy (\(PDDL _ id1 id2) -> i1 == id1 && i2 == id2)
+      Source -> elemBy (\(PDDL _ id1 id2) -> i2 == id1)
+      _      -> elemBy (\(PDDL _ id1 id2) -> i2 == id2)
 
 elemBy :: (a -> Bool) -> [a] -> Bool
 elemBy f (x:xs) | f x       = True

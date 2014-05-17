@@ -101,7 +101,8 @@ jsonMain jsinput =
             [("utterance", showJSON utterance),
              ("plan", if clarified && not wasAmbig then showJSON plan else JSNull),
              ("output", showJSON output)]
-            ++ if wasAmbig then [("state", ambList)] else [("state", showJSON "")]
+            ++ if wasAmbig && clarified then [("state", ambList)]
+               else [("state", showJSON "")]
 
     _  -> makeObj result
       where       

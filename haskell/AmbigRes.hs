@@ -11,6 +11,10 @@ data Ambiguity = Ambiguity AmbType Id [Id] deriving (Show)
 test :: PDDLWorld
 test = convertWorld complexWorld
 
+testWorld2 = [[PDDL Ontop "f" "k"],
+  [PDDL Ontop "f" "l"],
+  [PDDL Ontop "f" "m"]]
+
 ---------------------------------------------------------------------------
 
 resolveAmbig :: [[PDDL]] -> Either Ambiguity [PDDL]
@@ -19,9 +23,17 @@ resolveAmbig [x]    = Right x
 resolveAmbig (x:xs) =
   case checkSrcDups x xs of
     Nothing -> case checkDstDups x xs of
-      Nothing -> error $ show (x:xs)
+      Nothing -> case allSources (x:xs) of
+        Nothing -> Right x
+        Just a -> Left a
       Just d  -> Left d
     Just s  -> Left s
+
+allSources :: [[PDDL]] -> Maybe Ambiguity
+allSources [] = Nothing
+allSources xs = Just (Ambiguity Source "" ys)
+  where ys = [ id | y <- xs, (PDDL _ id id2) <- y]
+  
     
 checkDstDups :: [PDDL] -> [[PDDL]] -> Maybe Ambiguity
 checkDstDups [] [] = Nothing
@@ -84,9 +96,11 @@ buildChoices (Ambiguity isDst id listId)
   
 printObjects :: [Id] -> Int -> String
 printObjects [] _ = ""
---printObjects ("floor":xs) = .... TODO
---printObjects ("":xs) = .... TODO
+printObjects ("floor":xs) n = "(" ++ show n ++ ").The floor"
+                         ++ printObjects xs (n+1)
+printObjects ("":xs) n = "(" ++ show n ++ ").The hook"
+                         ++ printObjects xs (n+1)
 printObjects (x:xs) n = "(" ++ show n ++ ").The "
                          ++ map toLower (drop 7 (show (getObjId x)))
-                         ++ "  " --might cause error if floor or  "" is the id
+                         ++ "  "
                          ++ printObjects xs (n+1)

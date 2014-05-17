@@ -41,33 +41,38 @@ formTable = [ ("brick", Brick)
 testInterpret :: World -> Id -> [(Id, Object)] -> Command -> [[PDDL]]
 testInterpret world holding objects cmd =
   case holding of
-    "" -> nub $ createPDDL $ translateCmd cmd os world holding
-    id -> nub $ createPDDL $ translateCmd cmd adding world holding
+    "" -> nub $ createPDDL $ translateCommand cmd os world holding
+    id -> nub $ createPDDL $ translateCommand cmd adding world holding
     where os = filterWorld world objects
           adding = ((filter ((== holding) . fst) objects) ++ os)
 
+-- Interpret function to be exported. Will start the entire interpretation process
+interpret :: World -> Id -> Objects -> Command -> [[PDDL]]
+interpret world holding objects tree =
+  case holding of
+    "" -> nub $ createPDDL $ translateCommand tree os world holding
+    id -> nub $ createPDDL $ translateCommand tree adding world holding
+    where table = createTable objects
+          os = filterWorld world table
+          adding = ((filter ((== holding) . fst) table) ++ os)
+
+-- Function to create the actual PDDLs given how the command to the interpreter
+-- is interpreted
 createPDDL :: [[(Id, Relation, Id)]] -> [[PDDL]]
 createPDDL xs = map createPDDL' xs
   where createPDDL' :: [(Id, Relation, Id)] -> [PDDL]
         createPDDL' [] = []
         createPDDL' ((id1, r, id2):pddls) = PDDL r id1 id2 : createPDDL' pddls
 
-interpret :: World -> Id -> Objects -> Command -> [[PDDL]]
-interpret world holding objects tree =
-  case holding of
-    "" -> nub $ createPDDL $ translateCmd tree os world holding
-    id -> nub $ createPDDL $ translateCmd tree adding world holding
-    where table = createTable objects
-          os = filterWorld world table
-          adding = ((filter ((== holding) . fst) table) ++ os)
-
 -- Filters all the objects from the JSON-part that doesn't exist in the world
 filterWorld :: World -> [(Id, Object)] -> [(Id, Object)]
 filterWorld world mapping = filter ((`elem` flatWorld) . fst) mapping
   where flatWorld = concat world
+        
 --------------------------------------------------------------------------------
 --------------------------------- Lookup table ---------------------------------
 --------------------------------------------------------------------------------
+-- creates a lookup table over the objects given a JSON blob of data
 createTable :: Objects -> [(Id, Object)]
 createTable os = createTable' (ids `zip` os')
   where a = fromJSObject os
@@ -91,6 +96,26 @@ findStuff ((id, obj):xs) s
 
 --------------------------------------------------------------------------------
 
+-- Function that will initiate the translation of a given command (i.e. a parse tree)
+-- in a bottom-up fashion
+translateCommand :: Command -> [(Id, Object)] -> World -> Id -> [[(Id, Relation, Id)]]
+translateCommand cmd os w holding =
+  case cmd of
+    Move Floor _ -> error "translateCommand: Can't move floor!"
+    Move e     l -> createTriples es ls r (q, q') os
+      where (q, es)     = getEntities e os w
+            (q', r, ls) = getLocations l os w
+    Take Floor   -> error "translateCommand: Can't take floor!"
+    Take e       -> createTriples es [""] Ontop (q, Any) os
+      where (q, es) = getEntities e os w
+    Put l        ->
+      case holding of
+        "" -> error "translateCommand: Can't put anything down, not holding anything!"
+        id -> createTriples [id] ls r (The, q) os
+          where (q, r,ls) = getLocations l os w
+
+-- Get all the IDs that match the given entity in the current world.
+-- Also saves the quantifier for later
 getEntities :: Entity -> [(Id, Object)] -> World -> (Quantifier, [Id])
 getEntities Floor _ _ = (The, ["floor"])
 getEntities (BasicEntity q o) os _ =
@@ -106,6 +131,9 @@ getEntities (RelativeEntity q o l@(Relative r e)) os w =
         [] -> (q, [])
         zs -> (q, zs)
 
+-- Gets all the IDs of objects that match the given location in the current world.
+-- Keeps track of the quantifier as well as the relation an entity should have to
+-- the location entities
 getLocations :: Location -> [(Id, Object)] -> World -> (Quantifier, Relation, [Id])
 getLocations (Relative r e) os w =
   case e of
@@ -114,22 +142,7 @@ getLocations (Relative r e) os w =
     RelativeEntity q _ _ -> (q, r, [id | id <- id'])
   where (_, id') = getEntities e os w
 
-translateCmd :: Command -> [(Id, Object)] -> World -> Id -> [[(Id, Relation, Id)]]
-translateCmd cmd os w holding =
-  case cmd of
-    Move Floor _ -> error "translateCommand: Can't move floor!"
-    Move e l -> createTriples es ls r (q, q') os
-      where (q', r, ls) = getLocations l os w
-            (q, es) = getEntities e os w
-    Take Floor -> error "translateCommand: Can't take floor!"
-    Take e -> createTriples es [""] Ontop (q, Any) os
-      where (q, es) = getEntities e os w
-    Put l -> case holding of
-      "" -> error "translateCommand: Can't put anything down, not holding anything!"
-      id -> createTriples [id] ls r (The, q) os
-        where (q, r,ls) = getLocations l os w
-
-
+-- Creates a triple of data to be used when creating the PDDLs
 createTriples :: [Id] -> [Id] -> Relation -> (Quantifier, Quantifier) -> [(Id, Object)] -> [[(Id, Relation, Id)]]
 createTriples []            _         _ _  _  = []
 createTriples ids           [""]      r qs os = [[(id, r, "")] | id <- ids]
@@ -155,16 +168,21 @@ createTriples ids'@(id:ids) ls        r qs os =
     (Any, The) -> take 1 $ makeValid $ merge (length ls) $ concat $ map (createTriples' ls r os) ids'
     _          -> error "I can't do that, Dave... Don't know what you mean!"
 
+-- Help function, will create all triples to the locations given an source ID.
+-- Will only save legal combinations
 createTriples' :: [Id] -> Relation -> [(Id, Object)] -> Id -> [[(Id, Relation, Id)]]
 createTriples' []     _ _  _  = []
 createTriples' (l:ls) r os id =
   if r == Inside || r == Ontop then
-    if isLegal id l r os then
+    if isLegal id l os then
       [(id, r, l)] : createTriples' ls r os id
     else
       createTriples' ls r os id
-  else [(id, r, l)] : createTriples' ls r os id
+  else
+    [(id, r, l)] : createTriples' ls r os id
 
+-- Function to create the different combinations of elements which depends
+-- on the quantifiers in createTriples.
 merge :: Int -> [[(Id, Relation, Id)]] -> [[(Id, Relation, Id)]]
 merge x xs =
   case x of
@@ -174,6 +192,8 @@ merge x xs =
     4 -> [trip1 ++ trip2 ++ trip3 ++ trip4 | trip1 <- xs, trip2 <- xs, trip3 <- xs, trip4 <- xs]
     5 -> [trip1 ++ trip2 ++ trip3 ++ trip4 ++ trip5 | trip1 <- xs, trip2 <- xs, trip3 <- xs, trip4 <- xs, trip5 <- xs]
 
+-- Takes a list (from merge) and removes every set of combinations that isn't valid,
+-- e.g. two elements to the same source in the same sublist is not valid
 makeValid :: [[(Id, Relation, Id)]] -> [[(Id, Relation, Id)]]
 makeValid xs = makeValid' xs []
   where makeValid' :: [[(Id, Relation, Id)]] -> [[(Id, Relation, Id)]] -> [[(Id, Relation, Id)]]
@@ -183,6 +203,7 @@ makeValid xs = makeValid' xs []
                                 else
                                   makeValid' xs res
 
+-- Function to check if a sublist is valid or not
 valid :: [(Id, Relation, Id)] -> Bool
 valid []                     = True
 valid ((_, _, "floor"):rest) = valid rest
@@ -200,32 +221,37 @@ valid (x:xs)
         second :: (Id, Relation, Id) -> Id
         second (_, _, id) = id
 
-isLegal :: Id -> Id -> Relation -> [(Id, Object)] -> Bool
-isLegal id1 id2 r os = id2 == "floor" || okMove o1 o2
+-- Checks if it is legal to perform a move between two given IDs. Function is
+-- only called if the relation between the two entities will be either ontop or
+-- inside. It is legal if the destination is either the floor or if it's allowed to
+-- move the object corresponding to id1 to the object corresponding to id2
+isLegal :: Id -> Id -> [(Id, Object)] -> Bool
+isLegal id1 id2 os = id2 == "floor" || okMove o1 o2
   where o1 = snd $ head $ filter ((== id1) . fst) os
         o2 = snd $ head $ filter ((== id2) . fst) os
 
-findLegal :: Id -> [Id] -> Relation -> [(Id, Object)] -> (Id, Relation, Id)
-findLegal id [] r _ = ("", r, "")
-findLegal id (id':ids) r os =
-  if id' == "floor" || okMove o1 o2 then
-    (id, r, id')
+-- Function to check a given relation between a list of source entities and a list of
+-- destionation entities
+checkRelations :: [Id] -> [Id] -> Relation -> Quantifier -> World -> [(Id, Object)] -> [Id]
+checkRelations [] _ _ _ _ _ = []
+checkRelations (id:ids) ys r q w os =
+  if checkWorld id ys r q w os then
+    id : checkRelations ids ys r q w os
   else
-    findLegal id ids r os
-  where o1 = snd $ head $ filter ((== id ) . fst) os
-        o2 = snd $ head $ filter ((== id') . fst) os
+    checkRelations ids ys r q w os
 
+-- Checks the different destinations against a specific source
 checkWorld :: Id -> [Id] -> Relation -> Quantifier -> World -> [(Id, Object)] -> Bool
 checkWorld id ids r q w objects
   | and (map (/= id) ids) && id /= "floor" && and (map (/= "floor") ids) =
       case r of
-        Beside -> checkWorld' q (map ((/= i1) . fst) indices)
-        Leftof -> checkWorld' q (map ((i1 <) . fst) indices)
+        Beside  -> checkWorld' q (map ((/= i1) . fst) indices)
+        Leftof  -> checkWorld' q (map ((i1 <) . fst) indices)
         Rightof -> checkWorld' q (map ((i1 >) . fst) indices)
-        Above -> checkWorld' q (map (\(i2, i2') -> i1 == i2 && i1' < i2') indices)
-        Ontop -> checkWorld' q (map (\(i2, i2') -> i1 == i2 && i1' == (i2' + 1)) indices)
-        Under -> checkWorld' q (map (\(i2, i2') -> i1 == i2 && i1' < i2') indices)
-        Inside -> checkWorld' q (map (\(i2, i2') -> i1 == i2 && i1' == (i2' + 1)) indices) --getForm id2 == Box
+        Above   -> checkWorld' q (map (\(i2, i2') -> i1 == i2 && i1' < i2') indices)
+        Ontop   -> checkWorld' q (map (\(i2, i2') -> i1 == i2 && i1' == (i2' + 1)) indices)
+        Under   -> checkWorld' q (map (\(i2, i2') -> i1 == i2 && i1' < i2') indices)
+        Inside  -> checkWorld' q (map (\(i2, i2') -> i1 == i2 && i1' == (i2' + 1)) indices) --getForm id2 == Box
   | and (map (== "floor") ids) =
       case r of
         Ontop -> i1' == 0
@@ -239,15 +265,8 @@ checkWorld id ids r q w objects
 
         checkWorld' :: Quantifier -> [Bool] -> Bool
         checkWorld' All xs = and xs
-        checkWorld' _ xs = or xs
+        checkWorld' _   xs = or xs
 
-checkRelations :: [Id] -> [Id] -> Relation -> Quantifier -> World -> [(Id, Object)] -> [Id]
-checkRelations [] _ _ _ _ _ = []
-checkRelations (id:ids) ys r q w os =
-  if checkWorld id ys r q w os then
-    id : checkRelations ids ys r q w os
-  else
-    checkRelations ids ys r q w os
 
 -- Get all the ids matching a given object that exist in the current world
 getObjectIds :: Object -> [(Id, Object)] -> [Id]

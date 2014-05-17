@@ -36,10 +36,7 @@ main = do
 testGoals1 = [PDDL Ontop "e" "k", PDDL Beside "e" "l", PDDL Beside "l" "i"]
 -- Put the black ball in the small blue box ontop of the large yellow box beside the large green brick
 testGoals2 = [PDDL Ontop "f" "m", PDDL Beside "m" "a", PDDL Ontop "m" "k"]
-testWorld2 = [[PDDL Ontop "e" "k"],
-  [PDDL Ontop "e" "l"],
-  [PDDL Ontop "e" "m"],
-  [PDDL Ontop "f" "k"],
+testWorld2 = [[PDDL Ontop "f" "k"],
   [PDDL Ontop "f" "l"],
   [PDDL Ontop "f" "m"]]
 

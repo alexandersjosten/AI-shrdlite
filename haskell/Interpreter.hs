@@ -150,7 +150,7 @@ createTriples ids'@(id:ids) ls        r qs os =
         concat $ map (map (:[])) (take 1 $ makeValid $ merge (length ids') $ concat $ map (createTriples' ls r os) ids')
       else
         take 1 $ makeValid $ merge (length ids') $ concat $ map (createTriples' ls r os) ids'
-    (The, The) -> makeValid $ merge (length ids') $ concat $ map (createTriples' ls r os) ids'
+    (The, The) -> makeValid $ merge 1 $ concat $ map (createTriples' ls r os) ids'
     (Any, Any) -> take 1 $ makeValid $ merge 1 $ concat $ map (createTriples' ls r os) ids'
     (Any, The) -> take 1 $ makeValid $ merge (length ls) $ concat $ map (createTriples' ls r os) ids'
     _          -> error "I can't do that, Dave... Don't know what you mean!"

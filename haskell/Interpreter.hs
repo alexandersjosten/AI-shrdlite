@@ -205,68 +205,6 @@ isLegal id1 id2 r os = id2 == "floor" || okMove o1 o2
   where o1 = snd $ head $ filter ((== id1) . fst) os
         o2 = snd $ head $ filter ((== id2) . fst) os
 
-createAllTriple :: [Id] -> [Id] -> Relation -> Quantifier -> [(Id, Object)] -> [(Id, Relation, Id)]
-createAllTriple id1 ["floor"] r _ _ = [(id1', r, "floor") | id1' <- id1]
-createAllTriple id1 id2 r q os = createAllTriple' id1 id2 r q os []
-
-createAllTriple' :: [Id] -> [Id] -> Relation -> Quantifier -> [(Id, Object)] -> [(Id, Relation, Id)] -> [(Id, Relation, Id)]
-createAllTriple' [] _ _ q' _ acc = case acc of
-  [] -> []
-  xs -> case q' of
-    Any -> [head xs]
-    _ -> xs
-createAllTriple' _ [] _ _ _ _ = []
-createAllTriple' (id:ids) ls r q os acc = createAllTriple' ids ls' r q os (legal : acc)
-  where legal@(_, _, i2) = findLegal id ls r os
-        ls' = delete i2 ls
-
-createTriple' :: Id -> [Id] -> Relation -> Quantifier -> [(Id, Relation, Id)]
-createTriple' _ [] _ _ = []
-createTriple' id (id':ids) r q =
-  case q of
-    Any -> [(id, r, id')]
-    _ -> (id, r, id') : createTriple' id ids r q
-
-{-
-createTriple :: [Id] -> [Id] -> Relation -> Quantifier -> Quantifier -> [(Id, Object)] -> [[(Id, Relation, Id)]]
-createTriple [] _ _ _ _ _ = []
-createTriple ids'@(id:ids) ls r q q' os =
-  case q of
-    All -> [createAllTriple ids' ls r q os]
-    Any -> [createTriple' id' (filter (/= id') ls) r q']
-    The -> createTriple' id ls r q' : createTriple ids ls r q q' os
-  where id' = firstValid ids' ls r os
-
-        firstValid :: [Id] -> [Id] -> Relation -> [(Id, Object)] -> Id
-        firstValid [] _ _ _ = error "firstValid: Can't find valid Id!"
-        firstValid (id:ids) [""] r os = id
-        firstValid (id:ids) ids' r os =
-          case findLegal id ids' r os of
-            ("" , _, "") -> firstValid ids ids' r os
-            (id', _, _ ) -> id'
-
-createAllTriple :: [Id] -> [Id] -> Relation -> Quantifier -> [(Id, Object)] -> [(Id, Relation, Id)]
-createAllTriple id1 ["floor"] r _ _ = [(id1', r, "floor") | id1' <- id1]
-createAllTriple id1 id2 r q os = createAllTriple' id1 id2 r q os []
-
-createAllTriple' :: [Id] -> [Id] -> Relation -> Quantifier -> [(Id, Object)] -> [(Id, Relation, Id)] -> [(Id, Relation, Id)]
-createAllTriple' [] _ _ q' _ acc = case acc of
-  [] -> []
-  xs -> case q' of
-    Any -> [head xs]
-    _ -> xs
-createAllTriple' _ [] _ _ _ _ = []
-createAllTriple' (id:ids) ls r q os acc = createAllTriple' ids ls' r q os (legal : acc)
-  where legal@(_, _, i2) = findLegal id ls r os
-        ls' = delete i2 ls
-
-createTriple' :: Id -> [Id] -> Relation -> Quantifier -> [(Id, Relation, Id)]
-createTriple' _ [] _ _ = []
-createTriple' id (id':ids) r q =
-  case q of
-    Any -> [(id, r, id')]
-    _ -> (id, r, id') : createTriple' id ids r q
--}
 findLegal :: Id -> [Id] -> Relation -> [(Id, Object)] -> (Id, Relation, Id)
 findLegal id [] r _ = ("", r, "")
 findLegal id (id':ids) r os =

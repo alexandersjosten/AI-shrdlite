@@ -3,6 +3,7 @@ module AmbigRes where
 import ShrdliteGrammar
 import HelpFunctions
 import Data.Maybe
+import Data.Char
 
 data AmbType = Source | Dest deriving (Show, Eq, Read)
 data Ambiguity = Ambiguity AmbType Id [Id] deriving (Show)
@@ -73,14 +74,19 @@ srcDups x [] = []
 srcDups (PDDL rel src dst) xs =
   [src' | (PDDL rel' src' dst') <- xs, dst == dst']
   
-buildChoices :: Ambiguity -> [String]
-buildChoices (Ambiguity isDst id listId) =
-  ["Ambiguity error! Specify by entering a single number:"]
-  ++ printObjects listId 1
+buildChoices :: Ambiguity -> String
+buildChoices (Ambiguity isDst id listId)
+  | length listId > 5 = "There is "
+                         ++ show (length listId)
+                         ++ " objects you could be refering to, be more specific!"
+  | otherwise         = "Ambiguity error! Specify by entering a single number: "
+                        ++ printObjects listId 1
   
-printObjects :: [Id] -> Int -> [String]
-printObjects [] _ = []
+printObjects :: [Id] -> Int -> String
+printObjects [] _ = ""
 --printObjects ("floor":xs) = .... TODO
 --printObjects ("":xs) = .... TODO
-printObjects (x:xs) n = [show n ++ ". " ++ drop 7 (show (getObjId x))] --might cause error if floor or  "" is the id
+printObjects (x:xs) n = "(" ++ show n ++ ").The "
+                         ++ map toLower (drop 7 (show (getObjId x)))
+                         ++ "  " --might cause error if floor or  "" is the id
                          ++ printObjects xs (n+1)

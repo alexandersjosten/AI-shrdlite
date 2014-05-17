@@ -51,7 +51,7 @@ jsonMain jsinput =
       where
         (wasAmbig, ambList, theChoices) =
           case resolveAmbig goals of
-            Right _ -> (False, JSNull,[""])
+            Right _ -> (False, JSNull,"")
             Left x  -> (True, showJSON $ show goals, buildChoices x)
 
         utterance = ok (valFromObj "utterance" jsinput) :: Utterance
@@ -91,11 +91,11 @@ jsonMain jsinput =
               Right b -> True
     
         output
-          | not clarified = ["Ehh, why not trying to chose something that exist? Restarting."]
+          | not clarified = "Ehh, why not trying to chose something that exist? Restarting."
           | clarified && wasAmbig = case resolveAmbig goals of
               Right a -> error "EH WHAT?"
-              Left b -> ["There is some ambiguity left, "] ++ [drop 16 (head (theChoices))]
-          | otherwise = ["Great!"]
+              Left b -> "There is some ambiguity left, " ++ drop 16 (theChoices)
+          | otherwise = "Great!"
       
         result =
             [("utterance", showJSON utterance),
@@ -108,7 +108,7 @@ jsonMain jsinput =
       where       
         (wasAmbig, ambList, theChoices) =
           case resolveAmbig goals of
-            Right _ -> (False, JSNull,[""])
+            Right _ -> (False, JSNull,"")
             Left x -> (True, showJSON $ show (debug "oldgoals" goals), buildChoices x)
           
         utterance = ok (valFromObj "utterance" jsinput) :: Utterance
@@ -134,15 +134,15 @@ jsonMain jsinput =
             (g:gs) -> solve world hold holding g :: Plan
 
         output
-          | null trees = ["Parse error!"]
-          | null goals = ["Interpretation error!"]
+          | null trees = "Parse error!"
+          | null goals = "Interpretation error!"
           | wasAmbig = case (length goals > 5) of
-                            True -> ["There is "
+                            True -> "There is "
                                      ++ show (length goals)
-                                     ++ " things you could mean, please be more specific!"]
+                                     ++ " things you could mean, please be more specific!"
                             _    -> theChoices
-          | null plan = ["Planning error!"]
-          | otherwise = ["Success!"]
+          | null plan = "Planning error!"
+          | otherwise = "Success!"
         
         result = [("utterance", showJSON utterance),
                    ("trees", showJSON (map show trees)),

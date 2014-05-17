@@ -136,7 +136,11 @@ jsonMain jsinput =
         output
           | null trees = ["Parse error!"]
           | null goals = ["Interpretation error!"]
-          | wasAmbig = theChoices
+          | wasAmbig = case (length goals > 5) of
+                            True -> ["There is "
+                                     ++ show (length goals)
+                                     ++ " things you could mean, please be more specific!"]
+                            _    -> theChoices
           | null plan = ["Planning error!"]
           | otherwise = ["Success!"]
         
@@ -145,7 +149,7 @@ jsonMain jsinput =
                    ("goals", if length trees >= 1 then showJSON (map show goals) else JSNull),
                    ("plan", if length goals == 1 then showJSON plan else JSNull),
                    ("output", showJSON output)
-                  ] ++ if wasAmbig then [("state", (debug "oldAmblist" ambList))] else [("state", showJSON "")]
+                  ] ++ if wasAmbig && ((length goals) <= 5) then [("state", (debug "oldAmblist" ambList))] else [("state", showJSON "")]
 
 getChoice :: [String] -> Ambiguity -> Maybe Int
 getChoice [] _ = Nothing

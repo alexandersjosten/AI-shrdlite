@@ -254,16 +254,24 @@ createTriples ids'@(id:ids) ls        r qs os w =
 createTriples' :: [Id] -> Relation -> [(Id, Object)] -> Id -> [[(Id, Relation, Id)]]
 createTriples' []     _ _  _  = []
 createTriples' (l:ls) r os id =
-  if r == Inside || r == Ontop || r == Above then
-    if isLegal id l os then
-      [(id, r, l)] : createTriples' ls r os id
-    else
-      createTriples' ls r os id
-  else
-    if r == Under && isLegal l id os then
-      [(id, r, l)] : createTriples' ls r os id
-    else
-      createTriples' ls r os id
+  case r of
+    Inside -> if isLegal id l os then
+                [(id, r, l)] : createTriples' ls r os id
+              else
+                createTriples' ls r os id
+    Ontop  -> if isLegal id l os then
+                [(id, r, l)] : createTriples' ls r os id
+              else
+                createTriples' ls r os id
+    Above  -> if isLegal id l os then
+                [(id, r, l)] : createTriples' ls r os id
+              else
+                createTriples' ls r os id
+    Under  -> if isLegal l id os then
+                [(id, r, l)] : createTriples' ls r os id
+              else
+                createTriples' ls r os id
+    _      -> [(id, r, l)] : createTriples' ls r os id
       
 -- Function to create the different combinations of elements which depends
 -- on the quantifiers in createTriples.

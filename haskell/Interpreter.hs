@@ -37,34 +37,6 @@ formTable = [ ("brick", Brick)
             , ("table", Table)
             ]
 
-testInterpret :: World -> Id -> [(Id, Object)] -> Command -> [[PDDL]]
-testInterpret world holding objects cmd =
-  case holding of
-    "" ->
-      case pickBest world allPDDLs of
-        [] -> case (q1, q1') of
-          (The, The) -> allPDDLs
-          _   -> take 1 allPDDLs
-        xs -> case (q1, q1') of
-          (The, The) -> allPDDLs
-          _   -> take 1 xs
-    id ->
-      case pickBest world allPDDLs' of
-        [] -> case (q2, q2') of
-          (The, The) -> allPDDLs'
-          _   -> take 1 allPDDLs'
-        xs -> case (q2, q2') of
-          (The, The) -> allPDDLs'
-          _   -> take 1 xs
-    where os              = filterWorld world objects
-          adding          = ((filter ((== holding) . fst) objects) ++ os)
-          
-          (q1, q1', ps)   = translateCommand cmd os world holding
-          allPDDLs        = nub $ createPDDL ps
-          
-          (q2, q2', ps') = translateCommand cmd adding world holding
-          allPDDLs'       = nub $ createPDDL ps'
-
 -- Interpret function to be exported. Will start the entire interpretation process
 interpret :: World -> Id -> Objects -> Command -> [[PDDL]]
 interpret world holding objects tree =
@@ -181,44 +153,44 @@ translateCommand cmd os w holding =
   case cmd of
     Move Floor _ -> error "translateCommand: Can't move floor!"
     Move e     l -> (q, q', createTriples es ls r (q, q') os w)
-      where (q, es)     = getEntities e os w
-            (q', r, ls) = getLocations l os w
+      where (q, es)     = getEntities e os w holding
+            (q', r, ls) = getLocations l os w holding
     Take Floor   -> error "translateCommand: Can't take floor!"
     Take e       -> (q, Any, createTriples es [""] Ontop (q, Any) os w)
-      where (q, es) = getEntities e os w
+      where (q, es) = getEntities e os w holding
     Put l        ->
       case holding of
         "" -> error "translateCommand: Can't put anything down, not holding anything!"
         id -> (The, q, createTriples [id] ls r (The, q) os w)
-          where (q, r,ls) = getLocations l os w
+          where (q, r,ls) = getLocations l os w holding
 
 -- Get all the IDs that match the given entity in the current world.
 -- Also saves the quantifier for later
-getEntities :: Entity -> [(Id, Object)] -> World -> (Quantifier, [Id])
-getEntities Floor _ _ = (The, ["floor"])
-getEntities (BasicEntity q o) os _ =
+getEntities :: Entity -> [(Id, Object)] -> World -> Id -> (Quantifier, [Id])
+getEntities Floor _ _ _ = (The, ["floor"])
+getEntities (BasicEntity q o) os _ _ =
   case getObjectIds o os of
     [] -> error $ "getEntities: can't find the object " ++ show o --(q, [])
     xs -> (q, xs)
-getEntities (RelativeEntity q o l@(Relative r e)) os w =
+getEntities (RelativeEntity q o l@(Relative r e)) os w h =
   case getObjectIds o os of
     [] -> error $ "getEntities: can't find the object " ++ show o --(q, [])
-    xs -> case getLocations l os w of
+    xs -> case getLocations l os w h of
       (_, _, []) -> error $ "getEntities : Can't find any entities matching " ++ show e
-      (q', r', ys) -> case checkRelations xs ys r' q' w os of
+      (q', r', ys) -> case checkRelations xs ys r' q' w h os of
         [] -> (q, [])
         zs -> (q, zs)
 
 -- Gets all the IDs of objects that match the given location in the current world.
 -- Keeps track of the quantifier as well as the relation an entity should have to
 -- the location entities
-getLocations :: Location -> [(Id, Object)] -> World -> (Quantifier, Relation, [Id])
-getLocations (Relative r e) os w =
+getLocations :: Location -> [(Id, Object)] -> World -> Id -> (Quantifier, Relation, [Id])
+getLocations (Relative r e) os w h =
   case e of
     Floor -> (The, r, ["floor"])
     BasicEntity q _ -> (q, r, [id | id <- id'])
     RelativeEntity q _ _ -> (q, r, [id | id <- id'])
-  where (_, id') = getEntities e os w
+  where (_, id') = getEntities e os w h
 
 -- Creates a triple of data to be used when creating the PDDLs
 createTriples :: [Id] -> [Id] -> Relation -> (Quantifier, Quantifier) -> [(Id, Object)] -> World -> [[(Id, Relation, Id)]]
@@ -245,7 +217,7 @@ createTriples ids'@(id:ids) ls        r qs os w =
     (Any, Any) -> makeValid $ concat $ map (createTriples' ls r os) ids'
     (Any, The) -> concat $ map (createTriples' ls r os) ids'
     (Any, All) -> makeValidAnyAll $ merge (length ls) $ concat $ map (createTriples' ls r os) ids'
-    (The, All) -> makeValid $ merge (length ls) $ concat $ map (createTriples' ls r os) ids'
+    (The, All) -> makeValidAnyAll $ merge (length ls) $ concat $ map (createTriples' ls r os) ids'
     (All, All) -> makeValid $ merge (length ls) $ concat $ map (createTriples' ls r os) ids'
     _          -> error "I can't do that, Dave... Don't know what you mean!"
 
@@ -272,7 +244,7 @@ createTriples' (l:ls) r os id =
               else
                 createTriples' ls r os id
     _      -> [(id, r, l)] : createTriples' ls r os id
-      
+
 -- Function to create the different combinations of elements which depends
 -- on the quantifiers in createTriples.
 merge :: Int -> [[(Id, Relation, Id)]] -> [[(Id, Relation, Id)]]
@@ -344,17 +316,18 @@ isLegal id1 id2 os = id2 == "floor" || okMove o1 o2
 
 -- Function to check a given relation between a list of source entities and a list of
 -- destionation entities
-checkRelations :: [Id] -> [Id] -> Relation -> Quantifier -> World -> [(Id, Object)] -> [Id]
-checkRelations [] _ _ _ _ _ = []
-checkRelations (id:ids) ys r q w os =
-  if checkWorld id ys r q w os then
-    id : checkRelations ids ys r q w os
+checkRelations :: [Id] -> [Id] -> Relation -> Quantifier -> World -> Id -> [(Id, Object)] -> [Id]
+checkRelations []       _  _ _ _ _ _  = []
+checkRelations (id:ids) ys r q w h os =
+  if checkWorld id ys r q w h os then
+    id : checkRelations ids ys r q w h os
   else
-    checkRelations ids ys r q w os
+    checkRelations ids ys r q w h os
 
 -- Checks the different destinations against a specific source
-checkWorld :: Id -> [Id] -> Relation -> Quantifier -> World -> [(Id, Object)] -> Bool
-checkWorld id ids r q w objects
+checkWorld :: Id -> [Id] -> Relation -> Quantifier -> World -> Id -> [(Id, Object)] -> Bool
+checkWorld id ids r q w h objects
+  | id == h = True
   | and (map (/= id) ids) && id /= "floor" && and (map (/= "floor") ids) =
       case r of
         Beside  -> checkWorld' q (map ((/= i1) . fst) indices)
@@ -373,7 +346,7 @@ checkWorld id ids r q w objects
         getForm id = (\(Object _ _ f) -> f) (snd $ head $ filter ((== id) . fst) objects)
         
         (i1, i1') = getIndices w id
-        indices = map (getIndices w) ids
+        indices = map (getIndices w) (filter (/= h) ids)
 
         checkWorld' :: Quantifier -> [Bool] -> Bool
         checkWorld' All xs = and xs

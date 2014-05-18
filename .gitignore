@@ -7,3 +7,9 @@
 *.aux
 *.log
 Shrdlite
+ambs
+efilter
+eresolve
+oldAmblist
+oldgoals
+prevgoals

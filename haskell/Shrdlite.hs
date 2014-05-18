@@ -19,31 +19,15 @@ import Data.Char
 
 import System.IO.Unsafe
 
-debug :: Show a => FilePath -> a -> a
-debug file x = unsafePerformIO $ do
-  writeFile file (show x) ; return x
-
--- ... x ... => ... (debug "filen.txt" x)
-
 main :: IO ()
 main = do
   input <- getContents
   putStrLn . encode . jsonMain . ok $  decode input
 
---Test Goals
-
---Put the white ball(e) in the large yellow box(k) beside the large red box(l) beside the large yellow pyramid(i)
-testGoals1 = [PDDL Ontop "e" "k", PDDL Beside "e" "l", PDDL Beside "l" "i"]
--- Put the black ball in the small blue box ontop of the large yellow box beside the large green brick
-testGoals2 = [PDDL Ontop "f" "m", PDDL Beside "m" "a", PDDL Ontop "m" "k"]
-testWorld2 = [[PDDL Ontop "f" "k"],
-  [PDDL Ontop "f" "l"],
-  [PDDL Ontop "f" "m"]]
-
 jsonMain :: JSObject JSValue -> JSValue
 jsonMain jsinput =
   let amb = (valFromObj "state" jsinput) :: Result String in
-  case (debug "ambs" amb) of
+  case amb of
     Ok prev | prev /= "" -> makeObj result
       where
         (wasAmbig, ambList, theChoices) =
@@ -62,13 +46,13 @@ jsonMain jsinput =
         prevGoals = fmap read amb
 
         goals
-          | clarified = case (debug "prevgoals" (prevGoals)) of
+          | clarified = case prevGoals of
             Error _ -> error "!"
-            Ok c    -> case (debug "eresolve" (resolveAmbig c)) of
+            Ok c    -> case resolveAmbig c of
               Right a -> [a]
-              Left b  -> case (debug "egetC" (getChoice utterance b)) of
+              Left b  -> case getChoice utterance b of
                 Nothing -> error "!!"
-                Just x  -> (debug "efilter" (filterChoice x c))
+                Just x  -> filterChoice x c
           | otherwise  = case prevGoals of
             Error _ -> error "!"
             Ok a -> a
@@ -106,7 +90,7 @@ jsonMain jsinput =
         (wasAmbig, ambList, theChoices) =
           case resolveAmbig goals of
             Right _ -> (False, JSNull,"")
-            Left x -> (True, showJSON $ show (debug "oldgoals" goals), buildChoices x)
+            Left x -> (True, showJSON $ show goals, buildChoices x)
           
         utterance = ok (valFromObj "utterance" jsinput) :: Utterance
         
@@ -146,7 +130,7 @@ jsonMain jsinput =
                    ("goals", if length trees >= 1 then showJSON (map show goals) else JSNull),
                    ("plan", if length goals == 1 then showJSON plan else JSNull),
                    ("output", showJSON output)
-                  ] ++ if wasAmbig && ((length goals) <= 5) then [("state", (debug "oldAmblist" ambList))] else [("state", showJSON "")]
+                  ] ++ if wasAmbig && ((length goals) <= 5) then [("state", ambList)] else [("state", showJSON "")]
 
 getChoice :: [String] -> Ambiguity -> Maybe Int
 getChoice [] _ = Nothing

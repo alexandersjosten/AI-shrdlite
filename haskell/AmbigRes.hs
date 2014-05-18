@@ -8,13 +8,6 @@ import Data.Char
 data AmbType = Source | Dest deriving (Show, Eq, Read)
 data Ambiguity = Ambiguity AmbType Id [Id] deriving (Show)
 
-test :: PDDLWorld
-test = convertWorld complexWorld
-
-testWorld2 = [[PDDL Ontop "f" "k"],
-  [PDDL Ontop "f" "l"],
-  [PDDL Ontop "f" "m"]]
-
 ---------------------------------------------------------------------------
 
 resolveAmbig :: [[PDDL]] -> Either Ambiguity [PDDL]

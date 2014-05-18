@@ -10,9 +10,8 @@ import Text.JSON.Types
 import Data.List (elemIndex)
 import Data.List
 import Data.Maybe
-import HelpFunctions
+import HelpFunctions hiding (convertWorld)
 import Control.Monad
-
 
 -- Colors: Black | White | Blue | Green | Yellow | Red
 colorTable :: [(String, Color)]
@@ -41,20 +40,60 @@ formTable = [ ("brick", Brick)
 testInterpret :: World -> Id -> [(Id, Object)] -> Command -> [[PDDL]]
 testInterpret world holding objects cmd =
   case holding of
-    "" -> nub $ createPDDL $ translateCommand cmd os world holding
-    id -> nub $ createPDDL $ translateCommand cmd adding world holding
-    where os = filterWorld world objects
-          adding = ((filter ((== holding) . fst) objects) ++ os)
+    "" ->
+      case pickBest world allPDDLs of
+        [] -> case (q1, q1') of
+          (The, The) -> allPDDLs
+          _   -> take 1 allPDDLs
+        xs -> case (q1, q1') of
+          (The, The) -> allPDDLs
+          _   -> take 1 xs --nub $ createPDDL $ translateCommand tree os world holding
+    id ->
+      case pickBest world allPDDLs' of
+        [] -> case (q2, q2') of
+          (The, The) -> allPDDLs'
+          _   -> take 1 allPDDLs'
+        xs -> case (q2, q2') of
+          (The, The) -> allPDDLs'
+          _   -> take 1 xs
+    where os              = filterWorld world objects
+          adding          = ((filter ((== holding) . fst) objects) ++ os)
+          
+          (q1, q1', ps)   = translateCommand cmd os world holding
+          allPDDLs        = nub $ createPDDL ps
+          
+          (q2, q2', ps') = translateCommand cmd adding world holding
+          allPDDLs'       = nub $ createPDDL ps'
 
 -- Interpret function to be exported. Will start the entire interpretation process
 interpret :: World -> Id -> Objects -> Command -> [[PDDL]]
 interpret world holding objects tree =
   case holding of
-    "" -> nub $ createPDDL $ translateCommand tree os world holding
-    id -> nub $ createPDDL $ translateCommand tree adding world holding
-    where table = createTable objects
-          os = filterWorld world table
-          adding = ((filter ((== holding) . fst) table) ++ os)
+    "" ->
+      case pickBest world allPDDLs of
+        [] -> case (q1, q1') of
+          (The, The) -> allPDDLs
+          _   -> take 1 allPDDLs
+        xs -> case (q1, q1') of
+          (The, The) -> allPDDLs
+          _   -> take 1 xs --nub $ createPDDL $ translateCommand tree os world holding
+    id ->
+      case pickBest world allPDDLs' of
+        [] -> case (q2, q2') of
+          (The, The) -> allPDDLs'
+          _   -> take 1 allPDDLs'
+        xs -> case (q2, q2') of
+          (The, The) -> allPDDLs'
+          _   -> take 1 xs
+    where table           = createTable objects
+          os              = filterWorld world table
+          adding          = ((filter ((== holding) . fst) table) ++ os)
+          
+          (q1, q1', ps)   = translateCommand tree os world holding
+          allPDDLs        = nub $ createPDDL ps
+          
+          (q2, q2', ps') = translateCommand tree adding world holding
+          allPDDLs'       = nub $ createPDDL ps'
 
 -- Function to create the actual PDDLs given how the command to the interpreter
 -- is interpreted
@@ -63,6 +102,45 @@ createPDDL xs = map createPDDL' xs
   where createPDDL' :: [(Id, Relation, Id)] -> [PDDL]
         createPDDL' [] = []
         createPDDL' ((id1, r, id2):pddls) = PDDL r id1 id2 : createPDDL' pddls
+
+pickBest :: World -> [[PDDL]] -> [[PDDL]]
+pickBest w ts = pickBest' (convertWorld w) ts 0 []
+
+pickBest' :: PDDLWorld -> [[PDDL]] -> Int -> [[PDDL]] -> [[PDDL]]
+pickBest' _ []     _ res = res
+pickBest' w (t:ts) x res =
+  if checkCount > x then
+    pickBest' w ts checkCount [t]
+  else
+    pickBest' w ts x res
+  where checkCount = countSatisfied (concat w) t
+
+countSatisfied :: [PDDL] -> [PDDL] -> Int
+countSatisfied w ps = countSatisfied' w ps 0
+  where countSatisfied' ::[PDDL] -> [PDDL] -> Int -> Int
+        countSatisfied' _ []     count = count
+        countSatisfied' w (p:ps) count
+          | p `elem` w = countSatisfied' w ps (count + 1)
+          | otherwise  = countSatisfied' w ps count
+
+-- Convert world from given form to PDDL form
+convertWorld :: World -> PDDLWorld
+convertWorld []     = []
+convertWorld (c:cs) = (createPDDLWorld c) : convertWorld  cs
+  where createPDDLWorld []     = []
+        createPDDLWorld (x:xs) =
+          PDDL Ontop x ("floor") : [ getPDDL (c !! (i+1)) (c !! i)
+                                   | i <-[0..length xs -1]
+                                   ]
+
+getPDDL :: Id -> Id -> PDDL
+getPDDL id1 id2 =
+  if o2 == Box && o1 == Ball then
+    PDDL Inside id1 id2
+  else
+    PDDL Ontop id1 id2
+  where (Object _ _ o2) = getObjId id2
+        (Object _ _ o1) = getObjId id1
 
 -- Filters all the objects from the JSON-part that doesn't exist in the world
 filterWorld :: World -> [(Id, Object)] -> [(Id, Object)]
@@ -98,20 +176,20 @@ findStuff ((id, obj):xs) s
 
 -- Function that will initiate the translation of a given command (i.e. a parse tree)
 -- in a bottom-up fashion
-translateCommand :: Command -> [(Id, Object)] -> World -> Id -> [[(Id, Relation, Id)]]
+translateCommand :: Command -> [(Id, Object)] -> World -> Id -> (Quantifier, Quantifier, [[(Id, Relation, Id)]])
 translateCommand cmd os w holding =
   case cmd of
     Move Floor _ -> error "translateCommand: Can't move floor!"
-    Move e     l -> createTriples es ls r (q, q') os
+    Move e     l -> (q, q', createTriples es ls r (q, q') os w)
       where (q, es)     = getEntities e os w
             (q', r, ls) = getLocations l os w
     Take Floor   -> error "translateCommand: Can't take floor!"
-    Take e       -> createTriples es [""] Ontop (q, Any) os
+    Take e       -> (q, Any, createTriples es [""] Ontop (q, Any) os w)
       where (q, es) = getEntities e os w
     Put l        ->
       case holding of
         "" -> error "translateCommand: Can't put anything down, not holding anything!"
-        id -> createTriples [id] ls r (The, q) os
+        id -> (The, q, createTriples [id] ls r (The, q) os w)
           where (q, r,ls) = getLocations l os w
 
 -- Get all the IDs that match the given entity in the current world.
@@ -143,29 +221,32 @@ getLocations (Relative r e) os w =
   where (_, id') = getEntities e os w
 
 -- Creates a triple of data to be used when creating the PDDLs
-createTriples :: [Id] -> [Id] -> Relation -> (Quantifier, Quantifier) -> [(Id, Object)] -> [[(Id, Relation, Id)]]
-createTriples []            _         _ _  _  = []
-createTriples ids           [""]      r qs os = [[(id, r, "")] | id <- ids]
-createTriples ids           ["floor"] r qs os =
+createTriples :: [Id] -> [Id] -> Relation -> (Quantifier, Quantifier) -> [(Id, Object)] -> World -> [[(Id, Relation, Id)]]
+createTriples []            _         _ _  _  _ = []
+createTriples ids           [""]      r qs os w =
+  case qs of
+    (Any, Any) -> take 1 [[(id, r, "")] | id <- ids]
+    _          -> [[(id, r, "")] | id <- ids]
+createTriples ids           ["floor"] r qs os w =
   case qs of
     (Any, The) -> take 1 $ [[(id, r, "floor")] | id <- ids]
     (All, The) -> [[(id, r, "floor") | id <- ids]]
     (The, The) -> [[(id, r, "floor")] | id <- ids]
-createTriples ids'@(id:ids) ls        r qs os =
+createTriples ids'@(id:ids) ls        r qs os w =
   case qs of
     (All, Any) ->
-      if length ids' > length ls then
-        error "C'mon man, I don't have enough locations for you!"
-      else
-        take 1 $ makeValid $ merge (length ids') $ concat $ map (createTriples' ls r os) ids'
+      makeValid $ merge (length ids') $ concat $ map (createTriples' ls r os) ids'
     (The, Any) ->
       if length ids' > 1 then -- We have ambiguity...
         concat $ map (map (:[])) (take 1 $ makeValid $ merge (length ids') $ concat $ map (createTriples' ls r os) ids')
       else
-        take 1 $ makeValid $ merge (length ids') $ concat $ map (createTriples' ls r os) ids'
-    (The, The) -> makeValid $ merge 1 $ concat $ map (createTriples' ls r os) ids'
-    (Any, Any) -> take 1 $ makeValid $ merge 1 $ concat $ map (createTriples' ls r os) ids'
-    (Any, The) -> take 1 $ makeValid $ merge (length ls) $ concat $ map (createTriples' ls r os) ids'
+        makeValid $ merge (length ids') $ concat $ map (createTriples' ls r os) ids'
+    (The, The) -> makeValid $ concat $ map (createTriples' ls r os) ids'
+    (Any, Any) -> makeValid $ concat $ map (createTriples' ls r os) ids'
+    (Any, The) -> concat $ map (createTriples' ls r os) ids'
+    (Any, All) -> makeValidAnyAll $ merge (length ls) $ concat $ map (createTriples' ls r os) ids'
+    (The, All) -> makeValid $ merge (length ls) $ concat $ map (createTriples' ls r os) ids'
+    (All, All) -> makeValid $ merge (length ls) $ concat $ map (createTriples' ls r os) ids'
     _          -> error "I can't do that, Dave... Don't know what you mean!"
 
 -- Help function, will create all triples to the locations given an source ID.
@@ -179,18 +260,15 @@ createTriples' (l:ls) r os id =
     else
       createTriples' ls r os id
   else
-    [(id, r, l)] : createTriples' ls r os id
-
+    if r == Under && isLegal l id os then
+      [(id, r, l)] : createTriples' ls r os id
+    else
+      createTriples' ls r os id
+      
 -- Function to create the different combinations of elements which depends
 -- on the quantifiers in createTriples.
 merge :: Int -> [[(Id, Relation, Id)]] -> [[(Id, Relation, Id)]]
-merge x xs =
-  case x of
-    1 -> xs
-    2 -> [trip1 ++ trip2 | trip1 <- xs, trip2 <- xs]
-    3 -> [trip1 ++ trip2 ++ trip3 | trip1 <- xs, trip2 <- xs, trip3 <- xs]
-    4 -> [trip1 ++ trip2 ++ trip3 ++ trip4 | trip1 <- xs, trip2 <- xs, trip3 <- xs, trip4 <- xs]
-    5 -> [trip1 ++ trip2 ++ trip3 ++ trip4 ++ trip5 | trip1 <- xs, trip2 <- xs, trip3 <- xs, trip4 <- xs, trip5 <- xs]
+merge x xs = concat $ replicateM x xs
 
 -- Takes a list (from merge) and removes every set of combinations that isn't valid,
 -- e.g. two elements to the same source in the same sublist is not valid
@@ -221,6 +299,32 @@ valid (x:xs)
         second :: (Id, Relation, Id) -> Id
         second (_, _, id) = id
 
+
+makeValidAnyAll :: [[(Id, Relation, Id)]] -> [[(Id, Relation, Id)]]
+makeValidAnyAll xs = makeValidAnyAll' xs []
+
+makeValidAnyAll' :: [[(Id, Relation, Id)]] -> [[(Id, Relation, Id)]] -> [[(Id, Relation, Id)]]
+makeValidAnyAll' []     res = nub $ map sort res
+makeValidAnyAll' (x:xs) res = if valid' x then
+                                makeValidAnyAll' xs (x:res)
+                              else
+                                makeValidAnyAll' xs res
+
+valid' :: [(Id, Relation, Id)] -> Bool
+valid' []     = True
+valid' (x:xs)
+  | l1 == lRest && l2 == lRest = True
+  | otherwise   = False
+  where l1    = length (filter ((== first  x) . first ) xs)
+        l2    = length (filter ((/= second x) . second) xs)
+        lRest = length xs
+        
+        first  :: (Id, Relation, Id) -> Id
+        first  (id, _, _) = id
+
+        second :: (Id, Relation, Id) -> Id
+        second (_, _, id) = id
+        
 -- Checks if it is legal to perform a move between two given IDs. Function is
 -- only called if the relation between the two entities will be either ontop or
 -- inside. It is legal if the destination is either the floor or if it's allowed to
@@ -248,7 +352,7 @@ checkWorld id ids r q w objects
         Beside  -> checkWorld' q (map ((/= i1) . fst) indices)
         Leftof  -> checkWorld' q (map ((i1 <) . fst) indices)
         Rightof -> checkWorld' q (map ((i1 >) . fst) indices)
-        Above   -> checkWorld' q (map (\(i2, i2') -> i1 == i2 && i1' < i2') indices)
+        Above   -> checkWorld' q (map (\(i2, i2') -> i1 == i2 && i1' > i2') indices)
         Ontop   -> checkWorld' q (map (\(i2, i2') -> i1 == i2 && i1' == (i2' + 1)) indices)
         Under   -> checkWorld' q (map (\(i2, i2') -> i1 == i2 && i1' < i2') indices)
         Inside  -> checkWorld' q (map (\(i2, i2') -> i1 == i2 && i1' == (i2' + 1)) indices) --getForm id2 == Box

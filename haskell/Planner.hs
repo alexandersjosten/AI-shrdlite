@@ -18,7 +18,7 @@ import Heuristics
 
 -- Case for holding objects and goals when only taking up objects is next.
 solve :: World -> Id -> Id -> [PDDL] -> Plan
-solve world hold holding []  = ["No goal??? Interpreter ..... "] 
+solve world hold holding []  = ["Planner did not receive a goal"] 
 solve world hold holding  ((PDDL t a b):goal)
 	  | not $ and $ map (\(PDDL t a b)-> okMove (getObjId a) (getObjId b)) (filter isOnTop ((PDDL t a b):goal)) = ["Not Possible!"]
 	  | (b /= "") && (and $ map (checkGoal pddlWorld) ((PDDL t a b):goal)) = ["Already a goal!"]
@@ -56,7 +56,7 @@ runBfs maxD g w = if sDepth>maxD then ([(sDepth,(-1))],convertWorld w)
 					sDepth = sum $ fst $ unzip heuristicsList
 					wP = (convertWorld w)
 					
--- Starts going down the left most tree. Depth-first-search, with depth level
+--Bread first search, goes down to given deapth , once it is at 0 checks for goal state in the worlds
 bfs :: Int -> (Int,Int) -> [PDDL] -> PDDLWorld -> [Move] -> [PDDLWorld] ->  ([Move],PDDLWorld)
 bfs 0 _ g w ms _   = if  and (map (checkGoal w) g) then (ms,w) else ([],[])
 bfs d ss g w ms wos =  do

@@ -47,7 +47,7 @@ testInterpret world holding objects cmd =
           _   -> take 1 allPDDLs
         xs -> case (q1, q1') of
           (The, The) -> allPDDLs
-          _   -> take 1 xs --nub $ createPDDL $ translateCommand tree os world holding
+          _   -> take 1 xs
     id ->
       case pickBest world allPDDLs' of
         [] -> case (q2, q2') of
@@ -76,7 +76,7 @@ interpret world holding objects tree =
           _   -> take 1 allPDDLs
         xs -> case (q1, q1') of
           (The, The) -> allPDDLs
-          _   -> take 1 xs --nub $ createPDDL $ translateCommand tree os world holding
+          _   -> take 1 xs
     id ->
       case pickBest world allPDDLs' of
         [] -> case (q2, q2') of
@@ -85,15 +85,15 @@ interpret world holding objects tree =
         xs -> case (q2, q2') of
           (The, The) -> allPDDLs'
           _   -> take 1 xs
-    where table           = createTable objects
-          os              = filterWorld world table
-          adding          = ((filter ((== holding) . fst) table) ++ os)
+    where table          = createTable objects
+          os             = filterWorld world table
+          adding         = ((filter ((== holding) . fst) table) ++ os)
           
-          (q1, q1', ps)   = translateCommand tree os world holding
-          allPDDLs        = nub $ createPDDL ps
+          (q1, q1', ps)  = translateCommand tree os world holding
+          allPDDLs       = nub $ createPDDL ps
           
           (q2, q2', ps') = translateCommand tree adding world holding
-          allPDDLs'       = nub $ createPDDL ps'
+          allPDDLs'      = nub $ createPDDL ps'
 
 -- Function to create the actual PDDLs given how the command to the interpreter
 -- is interpreted
@@ -254,7 +254,7 @@ createTriples ids'@(id:ids) ls        r qs os w =
 createTriples' :: [Id] -> Relation -> [(Id, Object)] -> Id -> [[(Id, Relation, Id)]]
 createTriples' []     _ _  _  = []
 createTriples' (l:ls) r os id =
-  if r == Inside || r == Ontop then
+  if r == Inside || r == Ontop || r == Above then
     if isLegal id l os then
       [(id, r, l)] : createTriples' ls r os id
     else
@@ -268,7 +268,7 @@ createTriples' (l:ls) r os id =
 -- Function to create the different combinations of elements which depends
 -- on the quantifiers in createTriples.
 merge :: Int -> [[(Id, Relation, Id)]] -> [[(Id, Relation, Id)]]
-merge x xs = concat $ replicateM x xs
+merge x xs = map concat $ replicateM x xs
 
 -- Takes a list (from merge) and removes every set of combinations that isn't valid,
 -- e.g. two elements to the same source in the same sublist is not valid

@@ -134,7 +134,7 @@ jsonMain jsinput =
           | null trees = "Parse error!"
           | null goals = "Interpretation error!"
           | wasAmbig = case (length goals > 5) of
-                            True -> "There is "
+                            True -> "There are "
                                      ++ show (length goals)
                                      ++ " things you could mean, please be more specific!"
                             _    -> theChoices

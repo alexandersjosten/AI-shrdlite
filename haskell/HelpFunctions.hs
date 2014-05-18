@@ -16,14 +16,8 @@ type Goal = Bool
 type Plan = [String]
 type Move = (Int,Int) -- (Pick int, Drop int)
 
--- First, divide the features that describe the world into primitive 
--- and derived features. Definite clauses are 
+--Data type to represent the spatial relations in the world
 data PDDL = PDDL Relation Id Id deriving (Show, Read, Eq)
-
--- With this Eq, we can check if a PDDLworld == PDDLworld
-{-instance Eq PDDL where
-    (PDDL _ n11 n12) == (PDDL _ n21 n22) = n11 == n21 && n12 == n22-}
---(ontop a b), (ontop b floor-n)
 
 
 -- Hardcoded object, same as we get from small.json and medium.json
@@ -52,7 +46,7 @@ listOfObjects = [("a", Object Large Green Brick)
   show (PDDL Under   i1 i2) = "under "   ++ i1 ++ " " ++ i2
   show (PDDL Inside  i1 i2) = "inside "  ++ i1 ++ " " ++ i2-}
 
--- Find stack number and hight from Id
+-- Find stack number and number of objects above from Id
 findSAH :: Id -> World -> (Int,Int)		
 findSAH id w =  do
 					let stacknr = head $ elemIndices False (map isNothing (map (findIndex (id==)) w))
@@ -74,7 +68,7 @@ getObjId id = case lookup id listOfObjects of
 getIdPrim :: PDDL -> Object
 getIdPrim pd = getObjId $ getId pd
  
- -- Check if the move fullfills all constraints
+ --The physical relations given in the project description
 okMove :: Object -> Object -> Bool
 okMove _                       (Object _ _ Ball)        = False    -- Balls can't support anything.
 okMove (Object s1 _ Plank)     (Object s2 _  Box)       = s1 < s2  -- Boxes cannot contain  planks  of the same size.
@@ -90,7 +84,6 @@ okMove (Object s1 _ Ball)      (Object s2 _ Table)      = False    -- Balls must
 okMove (Object s1 _ Ball)      (Object s2 _ Brick)      = False    -- Balls must be in a box,     otherwise they roll away.
 okMove (Object s1 _ Box)       (Object s2 _ Box)        = s1 < s2  -- Small boxes can be in large boxes
 okMove (Object s1 _ Ball)      (Object s2 _ Plank)      = False    -- Balls must be in a box,     otherwise they roll away.
---okMove (Object s1 _ Box)       (Object s2 _ Box)        = False    -- Boxes can only be supported by tables of the same size.
 okMove (Object s1 _ _)         (Object s2 _  _)         = s1 <= s2 -- Small objects cannot support large objects.
 
 
@@ -122,7 +115,7 @@ checkGoal w (PDDL Leftof a b)  = leftOrRightOf (a,b) (convertPDDLWorld w)
 checkGoal w (PDDL Rightof a b) = leftOrRightOf (b,a) (convertPDDLWorld w)
         
 
--- Checks if Id is free
+-- Checks if Id is free, no object ontop of it
 isFree :: Id -> World -> Bool
 isFree i w = 0 == (snd ( findSAH  i w))
 
